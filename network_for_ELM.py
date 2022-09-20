@@ -38,6 +38,10 @@ def make_network(
                 decomp_network.decomp_pool(name='Tracer2',constraints={'initial':tinyval},kind='primary'),
 
                 decomp_network.decomp_pool(name='CO2(g)*',kind='gas'),
+
+                # Convert these from ppt by mass to mol/L
+                decomp_network.decomp_pool(name='Cl-',kind='primary',constraints={'initial':1.0e-6/(35.453*1.80655*1000)}),
+                decomp_network.decomp_pool(name='Na+',kind='primary',constraints={'initial':1.0e-6/(35.453*1.80655*1000)}),
         ]
 
         if oxygen_consuming:
@@ -128,9 +132,10 @@ def make_aqueous_network(
         thresh=0.0,
         adfactor_soil4=100.0,
         adfactor_soil3=10.0,
-        DOM_scale=1e-1,O2_scale=1e-4,
+        DOM_scale=4e-2,O2_scale=1e-4,sulfate_scale=1e-4,
         Fe=True,
         calcite=True,
+        methane=False,
                                 ):
         # CTC decomposition network
 
@@ -144,8 +149,8 @@ def make_aqueous_network(
                 decomp_network.decomp_pool(name='LITR3',constraints={'initial':tinyval/catomw},initCN=20*natomw/catomw ,kind='immobile'),
                 decomp_network.decomp_pool(name='CWD',constraints={'initial':tinyval/catomw},initCN=20*natomw/catomw ,kind='immobile'),
                 decomp_network.decomp_pool(name='CO2(aq)',kind='primary',constraints={'initial':'400e-6 G CO2(g)*'}),
-                decomp_network.decomp_pool(name='NH4+',constraints={'initial':1e-10},kind='primary'),
-                decomp_network.decomp_pool(name='NO3-',constraints={'initial':1e-10},kind='primary'),
+                decomp_network.decomp_pool(name='NH4+',constraints={'initial':tinyval},kind='primary'),
+                decomp_network.decomp_pool(name='NO3-',constraints={'initial':tinyval},kind='primary'),
                 decomp_network.decomp_pool(name='HRimm',constraints={'initial':tinyval},kind='immobile'),
                 decomp_network.decomp_pool(name='Nimm',constraints={'initial':tinyval},kind='immobile'),
                 decomp_network.decomp_pool(name='Nimp',constraints={'initial':tinyval},kind='immobile'),
@@ -159,8 +164,11 @@ def make_aqueous_network(
                 decomp_network.decomp_pool(name='Tracer2',constraints={'initial':tinyval},kind='primary'),
 
                 decomp_network.decomp_pool(name='CO2(g)*',kind='gas'),
+                # With sulfate reduction turned on, got super high CO2 concentrations that used up all the H+ and crashed the model
+                # Probably need to add some more buffering (carbonate?)
                 decomp_network.decomp_pool(name='HCO3-',kind='secondary'),
                 decomp_network.decomp_pool(name='CO3--',kind='secondary'),
+                
 
                 decomp_network.decomp_pool(name='O2(aq)',kind='primary',constraints={'initial':'0.2 G O2(g)'}),
                 decomp_network.decomp_pool(name='O2(g)',kind='gas'),
@@ -172,6 +180,18 @@ def make_aqueous_network(
                 # decomp_network.decomp_pool(name='DOM3',kind='primary',constraints={'initial':tinyval/catomw},CN=16.0),
 
                 decomp_network.decomp_pool(name='H+',kind='primary',constraints={'initial':'6.0 P'}),
+                decomp_network.decomp_pool(name='OH-',kind='secondary'),
+
+                # Convert these from ppt by mass to mol/L
+                decomp_network.decomp_pool(name='Cl-',kind='primary',constraints={'initial':1.0e-6/(35.453*1.80655*1000)}),
+                decomp_network.decomp_pool(name='Na+',kind='primary',constraints={'initial':1.0e-6/(35.453*1.80655*1000)}),
+
+                decomp_network.decomp_pool(name='SO4--',kind='primary',constraints={'initial':tinyval}),
+                decomp_network.decomp_pool(name='HS-',kind='primary',constraints={'initial':tinyval}),
+                decomp_network.decomp_pool(name='H2S(aq)',kind='secondary'),
+                decomp_network.decomp_pool(name='H2SO4(aq)',kind='secondary'),
+                decomp_network.decomp_pool(name='HSO4-',kind='secondary'),
+
 
         ]
         # Pools for iron reduction
@@ -194,6 +214,10 @@ def make_aqueous_network(
                         decomp_network.decomp_pool(name='CaOH+',kind='secondary'),
                         # I don't think PFLOTRAN will update SSA when volume changes when run via alquimia, might need to do that on driver side
                         decomp_network.decomp_pool(name='Calcite',rate='1.d-6 mol/m^2-sec',constraints={'initial':'0.d-6  80.0'},kind='mineral'),
+                ])
+        if methane:
+                pools.extend([
+                        decomp_network.decomp_pool(name='CH4(aq)',kind='primary',constraints={'initial':tinyval})
                 ])
 
         reactions = [
@@ -278,22 +302,57 @@ def make_aqueous_network(
                                                 # stoich='2.0 DOM1 + 8.0 Fe+++ + 4.0 H2O -> 2.0 CO2(aq) + 8.0 Fe++ + 9.0 H + NH4+',
                                                 monod_terms=[decomp_network.monod(species='DOM1',k=DOM_scale,threshold=1.1e-15),decomp_network.monod(species='Fe+++',k=1e-9)],
                                                 inhibition_terms=[decomp_network.inhibition(species='O2(aq)',k=O2_scale,type='MONOD')],
-                                                rate_constant=3e-8,reactiontype='MICROBIAL'),
+                                                rate_constant=2.25e-8,reactiontype='MICROBIAL'),
                         decomp_network.reaction(name='Fe(II) microbial oxidation',stoich='1.0 Fe++ + 0.25 O2(aq) + 1.0 H+ -> 1.0 Fe+++ + 0.5 H2O',
                                                 monod_terms=[decomp_network.monod(species='O2(aq)',k=O2_scale,threshold=0.0),decomp_network.monod(species='Fe++',k=0.1),
                                                                 decomp_network.monod(species='H+',k=1e-5)],
                                                 rate_constant=100e-8,reactiontype='MICROBIAL'),
                         # Assume as DOM is decomposed part per thousand Fe per unit C is released
                         decomp_network.reaction(name='DOM1 respiration',reactant_pools={'DOM1':1.0,'O2(aq)':1.0},product_pools={'CO2(aq)':1.0,'NH4+':1.0/100*catomw/natomw,'Fe+++':1e-3},
-                                                rate_constant=5e-7,reactiontype='MICROBIAL',
-                                                monod_terms=[decomp_network.monod(species='DOM1',k=0.1),decomp_network.monod(species='O2(aq)',k=O2_scale,threshold=0.0)])
+                                                rate_constant=2e-6,reactiontype='MICROBIAL',
+                                                monod_terms=[decomp_network.monod(species='DOM1',k=DOM_scale),decomp_network.monod(species='O2(aq)',k=O2_scale,threshold=0.0)])
                 ])
         else:
                 # DOM respiration. Assume stoichiometry of C6H12O6 + N0.5 + 6 O2 -> 6 CO2 + 6 H2O + 0.5 NH4+ (H and charge not balanced)
+                # Probably should add ACTIVATION_ENERGY for these so there is a temperature response
                 # NOTE: Sandbox CN is mass units, so needs to be converted for molar units here (or use another approach)  
                 reactions.extend([decomp_network.reaction(name='DOM1 respiration',reactant_pools={'DOM1':1.0,'O2(aq)':1.0},product_pools={'CO2(aq)':1.0,'NH4+':1.0/100*catomw/natomw},
-                        rate_constant=5e-7,reactiontype='MICROBIAL',
-                        monod_terms=[decomp_network.monod(species='DOM1',k=0.1),decomp_network.monod(species='O2(aq)',k=O2_scale,threshold=0.0)]),
+                        rate_constant=1e-6,reactiontype='MICROBIAL',
+                        monod_terms=[decomp_network.monod(species='DOM1',k=DOM_scale),decomp_network.monod(species='O2(aq)',k=O2_scale,threshold=0.0)]),
+                ])
+
+        # DOM-C + 2 H2O -> CO2 + 4 H+ + 4 e-
+        # 9 H+ + 8 e- + SO4-- -> HS- + 4 H2O
+        # 2 DOM-C + SO4-- + H+ -> 2 CO2 + HS- 
+        reactions.extend([
+                decomp_network.reaction(name='DOM1 sulfate reduction',reactant_pools={'DOM1':1.0,'SO4--':0.5,'H+':0.5},product_pools={'CO2(aq)':1.0,'HS-':0.5,'NH4+':1.0/100*catomw/natomw},
+                        rate_constant=1e-8,reactiontype='MICROBIAL',
+                        monod_terms=[decomp_network.monod(species='DOM1',k=DOM_scale,threshold=1.1e-15),
+                                        decomp_network.monod(species='SO4--',k=sulfate_scale),
+                                        decomp_network.monod(species='H+',k=1e-6)],
+                        inhibition_terms=[decomp_network.inhibition(species='O2(aq)',k=O2_scale,type='MONOD')],
+                ),
+                # HS- + 2 O2 -> SO4-- + H+
+                decomp_network.reaction(name='Sulfide oxidation',stoich='1.0 HS- + 2.0 O2(aq) -> 1.0 SO4-- + 1.0 H+',
+                        rate_constant=1e-7,reactiontype='MICROBIAL',
+                        monod_terms=[decomp_network.monod(species='O2(aq)',k=O2_scale,threshold=0.0),
+                                        decomp_network.monod(species='HS-',k=sulfate_scale)],
+                )
+
+        ])
+
+        if methane:
+                reactions.extend([
+                        # May want to add fermentation step to match previous model?
+                        # Need to add N mineralization here
+                        decomp_network.reaction(name='Acetaclastic methanogenesis',reactant_pools={'DOM1':1.0},product_pools={'CH4(aq)':0.5,'CO2(aq)':0.5,'NH4+':1.0/100*catomw/natomw},
+                                        monod_terms=[decomp_network.monod(species='DOM1',k=DOM_scale,threshold=1.1e-15),
+                                                        ],
+                                        inhibition_terms=[decomp_network.inhibition(species='O2(aq)',k=O2_scale,type='MONOD'),
+                                                        # decomp_network.inhibition(species='Fe+++',k=1e-9,type='MONOD'),
+                                                        decomp_network.inhibition(species='H+',k=10**-5.54,type='MONOD'),
+                                                        decomp_network.inhibition(species='H+',k=10**-5.54,type='INVERSE_MONOD')],
+                                        rate_constant=1.5e-8,reactiontype='MICROBIAL'),
                 ])
 
 
@@ -322,18 +381,24 @@ def oxygen_demand(txt):
 
 decomp_network_ad=make_network()
 decomp_network_notad=make_network(adfactor_soil3=1.0,adfactor_soil4=1.0)
-decomp_network_O2_ad=make_aqueous_network(calcite=False,Fe=True)
-decomp_network_O2_notad=make_aqueous_network(adfactor_soil3=1.0,adfactor_soil4=1.0,calcite=False,Fe=True)
+decomp_network_O2_ad=make_aqueous_network(calcite=False,Fe=False,DOM_scale=0.1)
+decomp_network_O2_notad=make_aqueous_network(adfactor_soil3=1.0,adfactor_soil4=1.0,calcite=False,Fe=False)
 
+decomp_network_arctic=make_aqueous_network(calcite=False,Fe=True,methane=True,DOM_scale=0.1,adfactor_soil4=1.0,adfactor_soil3=1.0)
+decomp_network_arctic_ad=make_aqueous_network(calcite=False,Fe=True,methane=True,DOM_scale=0.1)
 
-def load_state_from_logfile(filename):
+def load_state_from_logfile(filename,skip=1):
         lines=[]
+        skipped=0
         with open(filename) as f:
                 for line in f:
                         # if line.strip() == 'Alquimia primary species (mol/m3 bulk):':
                         if line.strip() == 'Alquimia aux doubles:':
-                                lines=f.readlines()
-                                break
+                                if skipped >= skip:
+                                        lines=f.readlines()
+                                        break
+                                else:
+                                        skipped += 1
                 else:
                         raise ValueError('No alquimia state printout found')
         return lines
@@ -458,6 +523,17 @@ if __name__=='__main__':
         decomp_network.PF_network_writer(decomp_network_O2_notad,precision=8).write_into_input_deck('SOMdecomp_template.txt','ELM_decks/CTC_alquimia_forELM_O2consuming.in',
                 CO2name='CO2(aq)',log_formulation=True,SOMdecomp_Q10=1.5,moisturefunc='LOGTHETA',database='hanford.dat',
                 chem_args={'MAX_RESIDUAL_TOLERANCE':.5e-13,'MAX_RELATIVE_CHANGE_TOLERANCE':1e-10}
+                )
+
+        # Write out input deck
+        decomp_network.PF_network_writer(decomp_network_arctic_ad,precision=12).write_into_input_deck('SOMdecomp_template.txt','ELM_decks/CTC_alquimia_forELM_arcticmethane_adspinup.in',
+                CO2name='CO2(aq)',log_formulation=True,SOMdecomp_Q10=1.5,moisturefunc='LOGTHETA',database='hanford.dat',
+                chem_args={'MAX_RESIDUAL_TOLERANCE':.1e-13,'MAX_RELATIVE_CHANGE_TOLERANCE':1e-10}
+                )
+
+        decomp_network.PF_network_writer(decomp_network_arctic,precision=12).write_into_input_deck('SOMdecomp_template.txt','ELM_decks/CTC_alquimia_forELM_arcticmethane.in',
+                CO2name='CO2(aq)',log_formulation=True,SOMdecomp_Q10=1.5,moisturefunc='LOGTHETA',database='hanford.dat',
+                chem_args={'MAX_RESIDUAL_TOLERANCE':.1e-13,'MAX_RELATIVE_CHANGE_TOLERANCE':1e-10}
                 )
 
         import sys
