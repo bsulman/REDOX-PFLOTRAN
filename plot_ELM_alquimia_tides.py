@@ -8,7 +8,7 @@ d=xarray.open_dataset(sys.argv[1])
 
 marshcol=d.isel(lndgrid=0)
 
-def plot_tides(a,start=0,end=8760,order=['H2OSFC','vertflow','SWC','oxygen','sulfate','sulfide','salinity','DOC','DIC','CH4'],salinity_vmax=80,zmax=1.5):
+def plot_tides(a,start=0,end=8760,order=['H2OSFC','vertflow','SWC','oxygen','sulfate','sulfide','salinity','DOC','DIC','CH4'],salinity_vmax=80,sulfate_vmax=None,zmax=1.5):
     for num,var in enumerate(order):
         VWC=(marshcol['H2OSOI']/marshcol['watsat']).T.squeeze()[:10,start:end]
         porosity=marshcol['watsat'].T.squeeze()[:10,start:end].to_masked_array()
@@ -29,34 +29,37 @@ def plot_tides(a,start=0,end=8760,order=['H2OSFC','vertflow','SWC','oxygen','sul
         elif var=='vertflow':
             marshcol['QFLX_ADV'].T[:10,start:end].plot(ax=a[num],vmax=0.005)
             a[num].set(ylim=(zmax,0),title='Vertical flux',ylabel='Depth (m)',xlabel='Time')
+        elif var=='drain_vr':
+            (marshcol['QDRAI_VR'].T[:10,start:end]/3600).plot(ax=a[num],cbar_kwargs={'label':'Drainage flux\n(mm s$^{-1}$)'})
+            a[num].set(ylim=(zmax,0),title='Subsurface drainage by layer',ylabel='Depth (m)',xlabel='Time')
         elif var=='salinity':
             (marshcol['soil_salinity'].T[:10,start:end]).plot(ax=a[num],cbar_kwargs={'label':'Salinity (ppt)'},vmin=0,vmax=salinity_vmax)
             a[num].set(ylim=(zmax,0),title='Soil salinity',ylabel='Depth (m)',xlabel='Time')
         elif var=='oxygen':
             # 32 converting from mol/m3 to mg/L = 16 g/mol * 2 (O2) *1000mg/g * 1/1000 m3/L
-            (marshcol['soil_O2'].T[:8,start:end]/porosity[:8,:]*32).plot(ax=a[num],cbar_kwargs={'label':'O$_2$ concentration\n(mg L$^{-1}$)'})
+            (marshcol['soil_O2'].T[:10,start:end]/porosity[:10,:]*32).plot(ax=a[num],cbar_kwargs={'label':'O$_2$ concentration\n(mg L$^{-1}$)'})
             a[num].set(ylim=(0.3,0),title='Soil O$_2$ concentration',ylabel='Depth (m)',xlabel='Time')
         elif var=='DOC':
             # Convert to umol/L 1e6 umol/mol * 1e-3 m3/L
-            (marshcol['DOC_vr'].T[:8,start:end]/porosity[:8,:]).plot(ax=a[num],cbar_kwargs={'label':'DOC concentration\n(mmol L$^{-1}$)'})
+            (marshcol['DOC_vr'].T[:10,start:end]/porosity[:10,:]/12).plot(ax=a[num],cbar_kwargs={'label':'DOC concentration\n(mmol L$^{-1}$)'})
             a[num].set(ylim=(zmax,0),title='Soil DOC concentration',ylabel='Depth (m)',xlabel='Time')
         elif var=='DIC':
-            (marshcol['DIC_vr'].T[:8,start:end]/porosity[:8,:]).plot(ax=a[num],cbar_kwargs={'label':'DIC concentration\n(mmol L$^{-1}$)'})
+            (marshcol['DIC_vr'].T[:10,start:end]/porosity[:10,:]/12).plot(ax=a[num],cbar_kwargs={'label':'DIC concentration\n(mmol L$^{-1}$)'})
             a[num].set(ylim=(zmax,0),title='Soil DIC concentration',ylabel='Depth (m)',xlabel='Time')
         elif var=='CH4':
-            (marshcol['CH4_vr'].T[:8,start:end]/porosity[:8,:]*1e3).plot(ax=a[num],cbar_kwargs={'label':'CH4 concentration\n($\mu$mol L$^{-1}$)'})
+            (marshcol['CH4_vr'].T[:10,start:end]/porosity[:10,:]*1e3/12).plot(ax=a[num],cbar_kwargs={'label':'CH4 concentration\n($\mu$mol L$^{-1}$)'})
             a[num].set(ylim=(zmax,0),title='Soil CH4 concentration',ylabel='Depth (m)',xlabel='Time')
         elif var=='sulfate':
-            (marshcol['soil_sulfate'].T[:8,start:end]/porosity[:8,:]).plot(ax=a[num],cbar_kwargs={'label':'Sulfate concentration\n(mmol L$^{-1}$)'})
+            (marshcol['soil_sulfate'].T[:10,start:end]/porosity[:10,:]).plot(ax=a[num],cbar_kwargs={'label':'Sulfate concentration\n(mmol L$^{-1}$)'},vmax=sulfate_vmax)
             a[num].set(ylim=(zmax,0),title='Soil sulfate concentration',ylabel='Depth (m)',xlabel='Time')
         elif var=='sulfide':
-            (marshcol['soil_sulfide'].T[:8,start:end]/porosity[:8,:]).plot(ax=a[num],cbar_kwargs={'label':'Sulfide concentration\n(mmol L$^{-1}$)'})
+            (marshcol['soil_sulfide'].T[:10,start:end]/porosity[:10,:]).plot(ax=a[num],cbar_kwargs={'label':'Sulfide concentration\n(mmol L$^{-1}$)'})
             a[num].set(ylim=(zmax,0),title='Soil sulfide concentration',ylabel='Depth (m)',xlabel='Time')
         elif var=='sulfide_ratio':
-            (marshcol['soil_sulfide'].T[:8,start:end]/marshcol['soil_sulfate'].T[:8,start:end]).plot(ax=a[num],cbar_kwargs={'label':'Sulfide:sulfate ratio'})
+            (marshcol['soil_sulfide'].T[:10,start:end]/marshcol['soil_sulfate'].T[:10,start:end]).plot(ax=a[num],cbar_kwargs={'label':'Sulfide:sulfate ratio'})
             a[num].set(ylim=(zmax,0),title='Soil sulfide:sulfate ratio',ylabel='Depth (m)',xlabel='Time')
         elif var=='pH':
-            (marshcol['soil_pH'].T[:8,start:end]).plot(ax=a[num],cbar_kwargs={'label':'pH'})
+            (marshcol['soil_pH'].T[:10,start:end]).plot(ax=a[num],cbar_kwargs={'label':'pH'})
             a[num].set(ylim=(zmax,0),title='Soil pH',ylabel='Depth (m)',xlabel='Time')
         elif var=='NEE':
             (marshcol['NEE'][start:end]*1e6/12).plot(ax=a[num])
@@ -76,6 +79,10 @@ plot_tides(a.ravel())
 f,a=plt.subplots(nrows=5,ncols=2,clear=True,num='Tidal result: Months',figsize=(8,9))
 plot_tides(a.ravel(),start=int(8760/12*6),end=int(8760/12*7.5))
 
+f,a=plt.subplots(nrows=6,ncols=1,clear=True,num='Tide demo',figsize=(5,9),sharex=True)
+plot_tides(a,start=int(8760/12*6.1),end=int(8760/12*7.2),order=['H2OSFC','SWC','salinity','oxygen','sulfate','DOC'],zmax=0.45,sulfate_vmax=200)
+a[-1].xaxis.set_major_formatter(matplotlib.dates.DateFormatter('%b-%d'))
+
 # forcing=xarray.open_dataset('/home/b0u/tidesPLM_2018_gapfill.nc',decode_times=False)
 start=int(8760/12*5)
 end=int(8760/12*6.5)
@@ -91,6 +98,8 @@ start=195
 end=197
 if len(d.lndgrid)==2:
     (d.isel(lndgrid=1)['H2OSFC'][int(8760/365*start):int(8760/365*end)]-800).plot(ax=a[0,0],ls='--')
+else:
+    (d.isel(lndgrid=0)['H2OSFC_TIDE'][int(8760/365*start):int(8760/365*end)]).plot(ax=a[0,0],ls='--')
 plot_tides(a.ravel(),start=int(8760/365*start),end=int(8760/365*end))
 a[0,0].legend(labels=['Tidal channel','Marsh'])
 
@@ -132,10 +141,7 @@ a[3].set(ylim=(zmax,0),title='Moisture profiles',xlabel='Moisture (fraction of s
 a[2].set(ylim=(zmax,0),title='DOC profiles',xlabel='DOC (mmol C L$^{-1}$)',ylabel='Depth (m)')
 a[4].set(ylim=(zmax,0),title='DIC profiles',xlabel='DIC (mmol C L$^{-1}$)',ylabel='Depth (m)')
 
-forcing=xarray.open_dataset('/home/b0u/tidesPLM_2018_gapfill.nc',decode_times=False)
-f,a=plt.subplots(num='Salinity forcing',clear=True)
-a.plot(d['time'][forcing['time'].values][start:end],forcing['tide_salinity'].squeeze()[start:end])
-a.set(title='Channel salinity forcing',xlabel='Time',ylabel='Salinity (ppt)')
+
 
 f,a=plt.subplots(num='Soil C profile',clear=True)
 a.plot((marshcol['LITR1C_vr']+marshcol['LITR2C_vr']+marshcol['LITR3C_vr']+marshcol['SOIL1C_vr']+marshcol['SOIL2C_vr']+marshcol['SOIL3C_vr']+marshcol['SOIL4C_vr']).mean(dim='time')[:10],z,'k-',label='Total')
@@ -153,9 +159,9 @@ a.legend()
 f,a=plt.subplots(num='Demo plot',clear=True,nrows=4)
 plot_tides(a.ravel(),start=int(8760/12*6),end=int(8760/12*7.5),order=['NEE','CH4FLUX_ALQUIMIA','H2OSFC','salinity'])
 
-f,a=plt.subplots(num='Hydro plot',clear=True,nrows=5,sharex=True)
+f,a=plt.subplots(num='Hydro plot',clear=True,nrows=6,sharex=True)
 # (d.isel(lndgrid=1)['H2OSFC'][int(8760/12*6):int(8760/12*7.0)]-800).plot(ax=a[0],ls='--',c='navy')
-plot_tides(a.ravel(),start=int(8760/12*6),end=int(8760/12*6.2),order=['H2OSFC','latflow','drain','SWC','salinity'],zmax=0.25,salinity_vmax=40)
+plot_tides(a.ravel(),start=int(8760/12*6),end=int(8760/12*6.1),order=['H2OSFC','latflow','drain','drain_vr','SWC','salinity'],zmax=1.25,salinity_vmax=40)
 # a[0].legend(labels=['Tidal channel','Marsh'])
 a[3].xaxis.set_major_formatter(matplotlib.dates.DateFormatter('%b-%d'))
 

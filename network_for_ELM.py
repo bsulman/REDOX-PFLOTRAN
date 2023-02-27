@@ -132,13 +132,21 @@ def make_aqueous_network(
         thresh=0.0,
         adfactor_soil4=100.0,
         adfactor_soil3=10.0,
-        DOM_scale=4e-2,O2_scale=1e-4,sulfate_scale=1e-4,Fe_scale=1e-9,
+        DOM_scale=4e-2,
+        acetate_scale=0.04,
+        O2_scale=1e-4,
+        H2_scale=0.1,
+        CO2_scale=0.1,
+        CH4_scale=1e-7,
+        sulfate_scale=1e-4,
+        Fe_scale=1e-9,
         anox_ratemod=1e-2,
         Fe=True,
         calcite=False,
         methane=False,
         sulfate=True,
-        DOM_CN=100.0
+        DOM_CN=100.0,
+        Eact=1e5, # PFLOTRAN uses Arrhenius equation, Eact in units of J/mol, T0=25 C: Arr(T[C])=exp(Eact/8.314*(1/298.15-1/(T+273.15)))
                                 ):
         # CTC decomposition network
 
@@ -181,6 +189,10 @@ def make_aqueous_network(
                 # decomp_network.decomp_pool(name='DOM2',kind='primary',constraints={'initial':tinyval/catomw},CN=10.0),
                 # This accounts for stoichiometry of SOIL2 decomposing to SOIL3 which has a higher C:N
                 # decomp_network.decomp_pool(name='DOM3',kind='primary',constraints={'initial':tinyval/catomw},CN=16.0),
+                decomp_network.decomp_pool(name='Acetate-',kind='primary',constraints={'initial':tinyval/catomw}),
+                # decomp_network.decomp_pool(name='Acetic_acid(aq)',kind='secondary'),
+
+                decomp_network.decomp_pool(name='H2(aq)',kind='primary',constraints={'initial':tinyval}),
 
                 decomp_network.decomp_pool(name='H+',kind='primary',constraints={'initial':'6.0 P'}),
                 decomp_network.decomp_pool(name='OH-',kind='secondary'),
@@ -190,7 +202,7 @@ def make_aqueous_network(
                 decomp_network.decomp_pool(name='Na+',kind='primary',constraints={'initial':1.0e-6/(35.453*1.80655*1000)}),
                 decomp_network.decomp_pool(name='Halite',rate='1.d-10 mol/m^2-sec',constraints={'initial':'0.0  80.0 m^2/m^3'},kind='mineral'),
 
-                decomp_network.decomp_pool(name='SO4--',kind='primary',constraints={'initial':tinyval}),
+                decomp_network.decomp_pool(name='SO4--',kind='primary',constraints={'initial':1e-5}),
                 decomp_network.decomp_pool(name='HS-',kind='primary',constraints={'initial':tinyval}),
                 decomp_network.decomp_pool(name='H2S(aq)',kind='secondary'),
                 decomp_network.decomp_pool(name='H2SO4(aq)',kind='secondary'),
@@ -204,10 +216,10 @@ def make_aqueous_network(
                 decomp_network.decomp_pool(name='FeIIIDOM1(aq)',kind='secondary'),
                 decomp_network.decomp_pool(name='FeIIDOM1(aq)',kind='secondary'),
                 # Specifying SSA on mass basis messes up repeated constraint equilibration for some reason
-                decomp_network.decomp_pool(name='Fe(OH)3',rate='1.d-10 mol/m^2-sec',constraints={'initial':'0.01  80.0 m^2/m^3'},kind='mineral'),  
+                decomp_network.decomp_pool(name='Fe(OH)3',rate='1.d-9 mol/m^2-sec',constraints={'initial':'0.01  80.0 m^2/m^3'},kind='mineral'),  
 
-                decomp_network.decomp_pool(name='CH4(aq)',kind='primary',constraints={'initial':tinyval})
-
+                decomp_network.decomp_pool(name='CH4(aq)',kind='primary',constraints={'initial':'1900e-9 G CH4(g)'}), # ~1900 ppb atmospheric concentration https://gml.noaa.gov/ccgg/trends_ch4/
+                decomp_network.decomp_pool(name='CH4(g)',kind='gas'),
         ]
 
         if calcite:
@@ -348,7 +360,7 @@ def make_aqueous_network(
                         rate_constant=1.0,biomass='Plant_NO3_demand',threshold=thresh),
 
                 # Nitrification. Simple version for CN reaction network without oxygen, H+, etc
-                decomp_network.reaction(stoich='1.0 NH4+ -> 1.0 NO3-',reactiontype='MICROBIAL',
+                decomp_network.reaction(stoich='1.0 NH4+ -> 1.0 NO3-',reactiontype='MICROBIAL',activation_energy=Eact,
                         name='Nitrification',monod_terms=[decomp_network.monod(species='NH4+',k=1e-5,threshold=thresh)],rate_constant=1e-9),
         ]
         if Fe:
@@ -357,16 +369,16 @@ def make_aqueous_network(
                         # C2H3O2- + 2 H2O -> 2 CO2 + 7 H+ + 8 e-
                         # 8 Fe+++ + 8 e- -> 8 Fe++ 
                         # pH might not be balanced right with how we're handling DOM decomposition above, and buffering is probably messed up
-                        decomp_network.reaction(name='Fe(III) reduction',reactant_pools={'DOM1':1.0,'Fe+++':4.0+DOM_Fe_content,'H2O':2.0},
-                                                                        product_pools={'CO2(aq)':1.0,'Fe++':4.0,'H+':4.0,'NH4+':1.0/DOM_CN*catomw/natomw,'SO4--':DOM_sulfur_content},
+                        decomp_network.reaction(name='Fe(III) reduction',reactant_pools={'Acetate-':1.0,'Fe+++':8.0,'H2O':2.0},
+                                                                        product_pools={'CO2(aq)':2.0,'Fe++':8.0,'H+':7.0},
                                                 # stoich='2.0 DOM1 + 8.0 Fe+++ + 4.0 H2O -> 2.0 CO2(aq) + 8.0 Fe++ + 9.0 H + NH4+',
-                                                monod_terms=[decomp_network.monod(species='DOM1',k=DOM_scale,threshold=1.1e-15),decomp_network.monod(species='Fe+++',k=Fe_scale)],
+                                                monod_terms=[decomp_network.monod(species='Acetate-',k=acetate_scale,threshold=thresh),decomp_network.monod(species='Fe+++',k=Fe_scale)],
                                                 inhibition_terms=[decomp_network.inhibition(species='O2(aq)',k=O2_scale,type='MONOD')],
-                                                rate_constant=2.25e-8,reactiontype='MICROBIAL'),
+                                                rate_constant=2.25e-8,reactiontype='MICROBIAL',activation_energy=Eact,),
                         decomp_network.reaction(name='Fe(II) microbial oxidation',stoich='1.0 Fe++ + 0.25 O2(aq) + 1.0 H+ -> 1.0 Fe+++ + 0.5 H2O',
                                                 monod_terms=[decomp_network.monod(species='O2(aq)',k=O2_scale,threshold=0.0),decomp_network.monod(species='Fe++',k=0.1),
                                                                 decomp_network.monod(species='H+',k=1e-5)],
-                                                rate_constant=100e-8,reactiontype='MICROBIAL'),
+                                                rate_constant=100e-8,reactiontype='MICROBIAL',activation_energy=Eact,),
                         
                 ])
         
@@ -374,28 +386,57 @@ def make_aqueous_network(
         # # Probably should add ACTIVATION_ENERGY for these so there is a temperature response
         # # NOTE: Sandbox CN is mass units, so needs to be converted for molar units here (or use another approach)  
         # # Include release of S and Fe from organic matter here
-        reactions.extend([decomp_network.reaction(name='DOM1 respiration',reactant_pools={'DOM1':1.0,'O2(aq)':1.0},
+        reactions.extend([
+                decomp_network.reaction(name='DOM1 respiration',reactant_pools={'DOM1':1.0,'O2(aq)':1.0},
                 product_pools={'CO2(aq)':1.0,'NH4+':1.0/DOM_CN*catomw/natomw,'Fe+++':DOM_Fe_content,'SO4--':DOM_sulfur_content},
-                rate_constant=2e-6,reactiontype='MICROBIAL',
+                rate_constant=2e-6,reactiontype='MICROBIAL',activation_energy=Eact,
                 monod_terms=[decomp_network.monod(species='DOM1',k=DOM_scale),decomp_network.monod(species='O2(aq)',k=O2_scale,threshold=0.0)]),
+        
+                # C6H12O6 + 2 H2O -> 2 CH3COO- + 2 CO2 + 2 H+ + 4 H2
+                # Dave Graham: DOM-C + 0.33 H2O -> 0.33 CH3COO- + 0.33 CO2 + 0.33 H+ + 0.67 H2
+                decomp_network.reaction(name='Fermentation',reactant_pools={'DOM1':1.0,'H2O':1/3},
+                        product_pools={'Acetate-':1/3,'CO2(aq)':1/3,'H+':1/3,'H2(aq)':2/3,
+                                'NH4+':1.0/DOM_CN*catomw/natomw,'Fe+++':DOM_Fe_content,'SO4--':DOM_sulfur_content}, 
+                        rate_constant=1.5e-6,reactiontype='MICROBIAL', activation_energy=Eact,
+                        inhibition_terms=[decomp_network.inhibition(species='O2(aq)',k=O2_scale,type='MONOD'),
+                                        decomp_network.inhibition(species='Acetate-',k=acetate_scale*0.5,type='MONOD'),
+                                        decomp_network.inhibition(species='H+',k=1e-4,type='MONOD'),
+                                        ],
+                        monod_terms=[decomp_network.monod(species='DOM1',k=DOM_scale,threshold=thresh)]),
+
+                # C2H3O2- + 2 H2O -> 2 CO2 + 7 H+ + 8 e-
+                # 2 O2    + 8 H+ + 8 e- -> 4 H2O
+                decomp_network.reaction(name='Acetate aerobic respiration',stoich='1.0 Acetate-  + 2.0 O2(aq) + 1.0 H+ -> 2.0 CO2(aq) + 2.0 H2O',
+                                                        monod_terms=[decomp_network.monod(species='O2(aq)',k=O2_scale,threshold=thresh),
+                                                                     decomp_network.monod(species='Acetate-',k=acetate_scale,threshold=thresh)],
+                                                        rate_constant=3e-6,reactiontype='MICROBIAL',activation_energy=Eact),
+
+
+                # H2 oxidation if oxygen available
+                decomp_network.reaction(name='Hydrogen oxidation',stoich='2.0 H2(aq) + 1.0 O2(aq) -> 2.0 H2O',
+                                                        monod_terms=[decomp_network.monod(species='H2(aq)',k=H2_scale,threshold=thresh),
+                                                                decomp_network.monod(species='O2(aq)',k=O2_scale,threshold=thresh)],
+                                                        rate_constant=1e-8*200,reactiontype='MICROBIAL',activation_energy=Eact,),
         ])
 
         # DOM-C + 2 H2O -> CO2 + 4 H+ + 4 e-
         # 9 H+ + 8 e- + SO4-- -> HS- + 4 H2O
         # 2 DOM-C + SO4-- + H+ -> 2 CO2 + HS- 
+        # C2H3O2- + 2 H2O -> 2 CO2 + 7 H+ + 8 e-
+        # SO4-- + 9 H+ + 8 e- -> HS- + 4 H2O
         if sulfate:
                 reactions.extend([
-                        decomp_network.reaction(name='DOM1 sulfate reduction',reactant_pools={'DOM1':1.0,'SO4--':0.5,'H+':0.5},
-                                product_pools={'CO2(aq)':1.0,'HS-':0.5+DOM_sulfur_content,'NH4+':1.0/DOM_CN*catomw/natomw,'Fe+++':DOM_Fe_content},
-                                rate_constant=1e-8,reactiontype='MICROBIAL',
-                                monod_terms=[decomp_network.monod(species='DOM1',k=DOM_scale,threshold=1.1e-15),
+                        decomp_network.reaction(name='Sulfate reduction',reactant_pools={'Acetate-':1.0,'SO4--':1.0,'H+':2},
+                                product_pools={'CO2(aq)':2.0,'HS-':1.0},
+                                rate_constant=1e-8,reactiontype='MICROBIAL',activation_energy=Eact,
+                                monod_terms=[decomp_network.monod(species='Acetate-',k=acetate_scale,threshold=1.1e-15),
                                                 decomp_network.monod(species='SO4--',k=sulfate_scale),
                                                 decomp_network.monod(species='H+',k=1e-6)],
                                 inhibition_terms=[decomp_network.inhibition(species='O2(aq)',k=O2_scale,type='MONOD')],
                         ),
                         # HS- + 2 O2 -> SO4-- + H+
                         decomp_network.reaction(name='Sulfide oxidation',stoich='1.0 HS- + 2.0 O2(aq) -> 1.0 SO4-- + 1.0 H+',
-                                rate_constant=1e-7,reactiontype='MICROBIAL',
+                                rate_constant=1e-7,reactiontype='MICROBIAL',activation_energy=Eact,
                                 monod_terms=[decomp_network.monod(species='O2(aq)',k=O2_scale,threshold=0.0),
                                                 decomp_network.monod(species='HS-',k=sulfate_scale)],
                         )
@@ -406,31 +447,45 @@ def make_aqueous_network(
                 reactions.extend([
                         # May want to add fermentation step to match previous model?
                         # Need to add N mineralization here
-                        decomp_network.reaction(name='Acetaclastic methanogenesis',reactant_pools={'DOM1':1.0},
-                                        product_pools={'CH4(aq)':0.5,'CO2(aq)':0.5,'NH4+':1.0/DOM_CN*catomw/natomw,'Fe+++':DOM_Fe_content,'SO4--':DOM_sulfur_content},
-                                        monod_terms=[decomp_network.monod(species='DOM1',k=DOM_scale,threshold=thresh),
+                        # C2H3O2- + H+ -> CH4 + CO2(aq)
+                        decomp_network.reaction(name='Acetaclastic methanogenesis',stoich='1.0 Acetate- + 1.0 H+ -> 1.0 CH4(aq) + 1.0 CO2(aq)',
+                                        monod_terms=[decomp_network.monod(species='Acetate-',k=acetate_scale,threshold=thresh),
                                                         ],
-                                        inhibition_terms=[decomp_network.inhibition(species='O2(aq)',k=O2_scale,type='MONOD'),
+                                        inhibition_terms=[decomp_network.inhibition(species='O2(aq)',k=O2_scale/10,type='MONOD'),
                                                         # decomp_network.inhibition(species='Fe+++',k=1e-9,type='MONOD'),
                                                         decomp_network.inhibition(species='H+',k=10**-5.54,type='MONOD'),
                                                         decomp_network.inhibition(species='H+',k=10**-5.54,type='INVERSE_MONOD')],
-                                        rate_constant=1.5e-8,reactiontype='MICROBIAL'),
+                                        rate_constant=1.5e-8,reactiontype='MICROBIAL',activation_energy=Eact,),
 
                         decomp_network.reaction(name='Methane oxidation',stoich='1.0 CH4(aq) + 2.0 O2(aq) -> 1.0 CO2(aq) + 2.0 H2O',
-                                        monod_terms=[decomp_network.monod(species='CH4(aq)',k=1e-6,threshold=thresh),
+                                        monod_terms=[decomp_network.monod(species='CH4(aq)',k=CH4_scale,threshold=thresh),
                                                      decomp_network.monod(species='O2(aq)',k=O2_scale,threshold=thresh) ],
-                                        rate_constant=2e-6,reactiontype='MICROBIAL'),
+                                        rate_constant=2e-6,reactiontype='MICROBIAL',activation_energy=Eact,),
+
+
+                        # Hydrogenotrophic methanogenesis
+                        decomp_network.reaction(name='Hydrogenotrophic methanogenesis',stoich='4.0 H2(aq) + 1.0 CO2(aq) -> 1.0 CH4(aq) + 2.0 H2O',
+                                                                monod_terms=[decomp_network.monod(species='H2(aq)',k=H2_scale,threshold=thresh),
+                                                                             decomp_network.monod(species='CO2(aq)',k=CO2_scale,threshold=thresh)],
+                                                                inhibition_terms=[decomp_network.inhibition(species='O2(aq)',k=O2_scale/10,type='MONOD'),
+                                                                # decomp_network.inhibition(species='Fe+++',k=conc_scales['Fe+++']*Fe_CH4_inhib,type='MONOD'),
+                                                                decomp_network.inhibition(species='H+',k=10**-6.75,type='MONOD'),
+                                                                # decomp_network.inhibition(species='NO3-',k=conc_scales['NO3-'],type='MONOD'),
+                                                                # decomp_network.inhibition(species='SO4--',k=conc_scales['SO4--'],type='MONOD')
+                                                                ],
+                                                                rate_constant=1e-8*3*0.32,reactiontype='MICROBIAL',activation_energy=Eact,),
+                        
                 ])
 
                 if sulfate:
                         reactions.extend([   decomp_network.reaction(name='Methane oxidation (SO4)',stoich='1.0 CH4(aq)  + 1.0 SO4-- + 1.0 H+ -> 1.0 CO2(aq)  + 1.0 HS- + 2.0 H2O ',
-                                            monod_terms=[decomp_network.monod(species='SO4--',k=sulfate_scale,threshold=thresh),decomp_network.monod(species='CH4(aq)',k=1e-6,threshold=thresh)],
-                                        rate_constant=1e-8,reactiontype='MICROBIAL'),])
+                                            monod_terms=[decomp_network.monod(species='SO4--',k=sulfate_scale,threshold=thresh),decomp_network.monod(species='CH4(aq)',k=CH4_scale,threshold=thresh)],
+                                        rate_constant=1e-7,reactiontype='MICROBIAL',activation_energy=Eact,),])
 
                 if Fe:
                         reactions.extend([   decomp_network.reaction(name='Methane oxidation (Fe)',stoich='1.0 CH4(aq)  + 8.0 Fe+++ + 2.0 H2O -> 1.0 CO2(aq)  + 8.0 Fe++ + 8.0 H+ ',
-                                            monod_terms=[decomp_network.monod(species='Fe+++',k=Fe_scale*8,threshold=thresh),decomp_network.monod(species='CH4(aq)',k=1e-6,threshold=thresh)],
-                                        rate_constant=1e-8,reactiontype='MICROBIAL'),])
+                                            monod_terms=[decomp_network.monod(species='Fe+++',k=Fe_scale*8,threshold=thresh),decomp_network.monod(species='CH4(aq)',k=CH4_scale,threshold=thresh)],
+                                        rate_constant=1e-7,reactiontype='MICROBIAL',activation_energy=Eact,),])
 
 
                 
@@ -459,10 +514,10 @@ def oxygen_demand(txt):
 decomp_network_ad=make_network()
 decomp_network_notad=make_network(adfactor_soil3=1.0,adfactor_soil4=1.0)
 decomp_network_O2_ad=make_aqueous_network(calcite=False,Fe=False,DOM_scale=0.1,methane=True)
-decomp_network_O2_notad=make_aqueous_network(adfactor_soil3=1.0,adfactor_soil4=1.0,calcite=False,Fe=False,DOM_scale=1e-2,anox_ratemod=1e-3,methane=True)
+decomp_network_O2_notad=make_aqueous_network(adfactor_soil3=1.0,adfactor_soil4=1.0,calcite=False,Fe=False,DOM_scale=1e-3,anox_ratemod=1e-3,methane=True)
 
-decomp_network_arctic_ad=make_aqueous_network(calcite=False,Fe=True,methane=True,sulfate=True,DOM_scale=0.1)
-decomp_network_arctic=make_aqueous_network(calcite=False,Fe=True,methane=True,sulfate=True,DOM_scale=0.1,adfactor_soil4=1.0,adfactor_soil3=1.0,anox_ratemod=1e-3)
+decomp_network_arctic_ad=make_aqueous_network(calcite=False,Fe=True,methane=True,sulfate=True,DOM_scale=0.1,CH4_scale=1e-9)
+decomp_network_arctic=make_aqueous_network(calcite=False,Fe=True,methane=True,sulfate=True,DOM_scale=0.1,adfactor_soil4=1.0,adfactor_soil3=1.0,anox_ratemod=1e-3,CH4_scale=1e-9)
 
 
 def load_state_from_logfile(filename,skip=1):
@@ -552,10 +607,10 @@ def test_solve(chem,data,status,dt=3600):
         mineralnames=run_alquimia.get_alquimiavector(data.meta_data.mineral_names)
         try:
                 max_cuts=run_alquimia.run_onestep(chem,data,dt,status,hands_off=True)
-                print(f'Converged at {max_cuts:d} cuts, {status.num_newton_iterations} Newton iterations')
+                msg=(f'Converged at {max_cuts:d} cuts, {status.num_newton_iterations} Newton iterations')
         except RuntimeError as err:
-                print(f'****** Solve failed: {status.num_newton_iterations} Newton iterations ******')
-                print(err)
+                msg=(f'****** Solve failed: {status.num_newton_iterations} Newton iterations ******')
+                msg=msg+'\n'+str(err)
                 # run_alquimia.print_alquimia_object(status)
         mobile_after=run_alquimia.get_alquimiavector(data.state.total_mobile)
         immobile_after=run_alquimia.get_alquimiavector(data.state.total_immobile)
@@ -576,7 +631,7 @@ def test_solve(chem,data,status,dt=3600):
                                 },index=mineralnames)
         minerals['Mineral VF change']=minerals['Mineral VF after']-minerals['Mineral VF before']
         minerals['Mineral SSA change']=minerals['Mineral SSA after']-minerals['Mineral SSA before']
-        return df,df2,minerals
+        return df,df2,minerals,msg
 
 
 if __name__=='__main__':
@@ -611,7 +666,7 @@ if __name__=='__main__':
 
         decomp_network.PF_network_writer(decomp_network_arctic,precision=12).write_into_input_deck('SOMdecomp_template.txt','ELM_decks/CTC_alquimia_forELM_arcticmethane.in',
                 CO2name='CO2(aq)',log_formulation=True,SOMdecomp_Q10=1.5,moisturefunc='LOGTHETA',database='hanford.dat',
-                chem_args={'MAX_RESIDUAL_TOLERANCE':1.0e-13,'MAX_RELATIVE_CHANGE_TOLERANCE':1e-10}
+                chem_args={'MAX_RESIDUAL_TOLERANCE':2.0e-13,'MAX_RELATIVE_CHANGE_TOLERANCE':1e-10}
                 )
 
         import sys
@@ -708,8 +763,9 @@ if __name__=='__main__':
                         state=load_state_from_logfile(sys.argv[sys.argv.index('test_solve')+1])
                 else:
                         state=''
-                mobile,aux,miner=test_solve(*str_to_alquimia('ELM_decks/CTC_alquimia_forELM_arcticmethane.in',state),dt=1.76*0.5)
+                mobile,aux,miner,msg=test_solve(*str_to_alquimia('ELM_decks/CTC_alquimia_forELM_arcticmethane.in',state),dt=3600)
                 # NOTE: In cases where it fails to converge at short time steps, sometimes increasing the MAX_RESIDUAL_TOLERANCE fixes it
                 print(aux)
                 print(mobile)
                 print(miner)
+                print(msg)
