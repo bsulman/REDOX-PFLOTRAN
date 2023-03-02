@@ -669,6 +669,8 @@ class PF_microbial_reaction_writer(PF_writer):
             self.add_line('SPECIES_NAME '+reaction_data['biomass'])
             self.add_line('YIELD {yld:1.{prec}f}'.format(prec=self.precision,yld=reaction_data.pop('biomass_yield',0)))
             self.decrease_level()
+        if 'activation_energy' in reaction_data:
+            self.add_line('ACTIVATION_ENERGY {Eact:1.{prec}f}'.format(prec=self.precision,Eact=reaction_data.pop('activation_energy')))
         self.decrease_level()
     
         return self.output

@@ -33,17 +33,18 @@ def plot_vars(plotname,vars,figsize=(4,4),maxdepth=1.5,vmax={}):
             (VWC/porosity).plot(ax=a[varnum,0],vmax=1,cbar_kwargs={'label':'Volumetric water\n(fraction of saturation)'},cmap='Blues')
             for num in range(len(snapshots)):
                 a[varnum,0].axvline(a[varnum,0].xaxis.convert_units(t[snapshots[num]].item()),ls=snapshot_styles[num],c='gray',lw=2.0)
-                a[varnum,1].plot(VWC.isel(time=snapshots[num]),z,ls=snapshot_styles[num],c='gray')
+                a[varnum,1].plot(VWC.isel(time=snapshots[num])/porosity[:,snapshots[num]],z,ls=snapshot_styles[num],c='gray')
             a[varnum,0].set(title='Soil water content',ylim=(maxdepth,0),xlabel='Time (year)',ylabel='Soil depth (m)')
             a[varnum,1].set(title='Soil water content',ylim=(maxdepth,0),xlabel='VWC (frac of sat)',ylabel='Soil depth (m)')
         if var=='frozen':
-            frozenfrac= (data['SOILICE']/(data['SOILLIQ']+data['SOILICE'])).T.squeeze()[:10,:]
-            frozenfrac.plot(ax=a[varnum,0],vmax=1,cbar_kwargs={'label':'Frozen water fraction'},cmap='Blues_r')
-            for num in range(len(snapshots)):
-                a[varnum,0].axvline(a[varnum,0].xaxis.convert_units(t[snapshots[num]].item()),ls=snapshot_styles[num],c='gray',lw=2.0)
-                a[varnum,1].plot(frozenfrac.isel(time=snapshots[num]),z,ls=snapshot_styles[num],c='gray')
-            a[varnum,0].set(title='Frozen water fraction',ylim=(maxdepth,0),xlabel='Time (year)',ylabel='Soil depth (m)')
-            a[varnum,1].set(title='Frozen water fraction',ylim=(maxdepth,0),xlabel='Frozen water fraction',ylabel='Soil depth (m)')
+            if 'SOILICE' in data:
+                frozenfrac= (data['SOILICE']/(data['SOILLIQ']+data['SOILICE'])).T.squeeze()[:10,:]
+                frozenfrac.plot(ax=a[varnum,0],vmax=1,cbar_kwargs={'label':'Frozen water fraction'},cmap='Blues_r')
+                for num in range(len(snapshots)):
+                    a[varnum,0].axvline(a[varnum,0].xaxis.convert_units(t[snapshots[num]].item()),ls=snapshot_styles[num],c='gray',lw=2.0)
+                    a[varnum,1].plot(frozenfrac.isel(time=snapshots[num]),z,ls=snapshot_styles[num],c='gray')
+                a[varnum,0].set(title='Frozen water fraction',ylim=(maxdepth,0),xlabel='Time (year)',ylabel='Soil depth (m)')
+                a[varnum,1].set(title='Frozen water fraction',ylim=(maxdepth,0),xlabel='Frozen water fraction',ylabel='Soil depth (m)')
         elif var=='O2':
             if 'O2' in vmax:
                 vmax_O2=vmax['O2']
@@ -175,6 +176,7 @@ plot_vars('Redox',['Fe2','FeOxide','Sulfate','Sulfide','pH'],figsize=(6,8.5),max
 
 
 if 'SIC_vr' in data:
+    maxdepth=2.2
     calcite=data['SIC_vr'].T.squeeze()[:10,:]
     # f,a=plt.subplots(num='Calcite',clear=True,nrows=1,ncols=2,gridspec_kw={'width_ratios':[1,0.5]},figsize=(6,3))
     f,a=plt.subplot_mosaic(
