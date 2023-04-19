@@ -14,24 +14,7 @@ Set up a directory to store all this stuff:
 You can of course organize these codes however you want, as long as you make sure the paths in commands point to the right directories.
 
 1.	Install software packages
-    
-    *	Follow directions at https://github.com/bsulman/REDOX-PFLOTRAN/blob/master/README_INSTALL. This will install and compile PFLOTRAN and alquimia and clone all the python scripts in REDOX-PFLOTRAN
-    
-    *	Install Offline Model Testbed (OLMT) and check out alquimia branch:
 
-            cd $BASEDIR
-            git clone https://github.com/dmricciuto/OLMT.git
-            cd OLMT
-            git checkout bsulman/coastal_main
-
-        Note: Your python installation will need to have the netCDF4 package installed to run OLMT. netCDF4 should be installed with the python version you get on cades (`module load python`) but if you are using an anaconda python environment you may need to install the netCDF4 package.
-    
-    *	Clone/checkout correct ELM code:
-
-            cd $BASEDIR
-            git clone -b coastal_main_E3SMv2 git@github.com:bsulman/E3SM.git
-            cd E3SM
-            git submodule update --init --recursive
 
     *	To set up environment for ELM compilation, add the following to ~/.bashrc (assuming PFLOTRAN is installed in $HOME/ELM-alquimia):
 
@@ -64,6 +47,27 @@ You can of course organize these codes however you want, as long as you make sur
             export PETSC_DIR=/software/user_tools/current/cades-ccsi/petsc-x
             export PETSC_ARCH=openmpi-1.10-gcc-5.3
             export PETSC_PATH=$PETSC_DIR/$PETSC_ARCH
+    
+    *	Follow directions at https://github.com/bsulman/REDOX-PFLOTRAN/blob/master/README_INSTALL. This will install and compile PFLOTRAN and alquimia and clone all the python scripts in REDOX-PFLOTRAN
+    
+    *	Install Offline Model Testbed (OLMT) and check out alquimia branch:
+
+            cd $BASEDIR
+            git clone https://github.com/dmricciuto/OLMT.git
+            cd OLMT
+            git checkout bsulman/coastal_main
+
+        Note: Your python installation will need to have the netCDF4 package installed to run OLMT. netCDF4 should be installed with the python version you get on cades (`module load python`) but if you are using an anaconda python environment you may need to install the netCDF4 package.
+    
+    *	Clone/checkout correct ELM code:
+
+            cd $BASEDIR
+            git clone -b coastal_main_E3SMv2 git@github.com:bsulman/E3SM.git
+            cd E3SM
+            git submodule update --init --recursive
+
+        Note: To clone the E3SM code, you will need to have a Github account that is connected to an ssh key on the computer you are cloning to. See directions here: https://docs.github.com/en/authentication/connecting-to-github-with-ssh/adding-a-new-ssh-key-to-your-github-account?platform=linux
+
 
 2.	Generate PFLOTRAN input decks:
 

@@ -3,12 +3,13 @@ import matplotlib.pyplot as plt
 import matplotlib.colors
 import sys
 import numpy as np
+from plot_ELM_alquimia_result import format_nc_time
 
 d=xarray.open_dataset(sys.argv[1])
 
 marshcol=d.isel(lndgrid=0)
 
-def plot_tides(a,start=0,end=8760,order=['H2OSFC','vertflow','SWC','oxygen','sulfate','sulfide','salinity','DOC','DIC','CH4'],salinity_vmax=80,sulfate_vmax=None,zmax=1.5):
+def plot_tides(a,start=0,end=8760,order=['H2OSFC','vertflow','SWC','oxygen','sulfate','sulfide','salinity','DOC','DIC','CH4'],salinity_vmax=80,sulfate_vmax=None,methane_vmax=0.5,zmax=1.5):
     for num,var in enumerate(order):
         VWC=(marshcol['H2OSOI']/marshcol['watsat']).T.squeeze()[:10,start:end]
         porosity=marshcol['watsat'].T.squeeze()[:10,start:end].to_masked_array()
@@ -37,17 +38,17 @@ def plot_tides(a,start=0,end=8760,order=['H2OSFC','vertflow','SWC','oxygen','sul
             a[num].set(ylim=(zmax,0),title='Soil salinity',ylabel='Depth (m)',xlabel='Time')
         elif var=='oxygen':
             # 32 converting from mol/m3 to mg/L = 16 g/mol * 2 (O2) *1000mg/g * 1/1000 m3/L
-            (marshcol['soil_O2'].T[:10,start:end]/porosity[:10,:]*32).plot(ax=a[num],cbar_kwargs={'label':'O$_2$ concentration\n(mg L$^{-1}$)'})
+            (marshcol['soil_O2'].T[:10,start:end]/porosity[:10,:]).plot(ax=a[num],cbar_kwargs={'label':'O$_2$ concentration\n(mmol L$^{-1}$)'})
             a[num].set(ylim=(0.3,0),title='Soil O$_2$ concentration',ylabel='Depth (m)',xlabel='Time')
         elif var=='DOC':
             # Convert to umol/L 1e6 umol/mol * 1e-3 m3/L
-            (marshcol['DOC_vr'].T[:10,start:end]/porosity[:10,:]/12).plot(ax=a[num],cbar_kwargs={'label':'DOC concentration\n(mmol L$^{-1}$)'})
+            (marshcol['DOC_vr'].T[:10,start:end]/porosity[:10,:]/12.011).plot(ax=a[num],cbar_kwargs={'label':'DOC concentration\n(mmol L$^{-1}$)'})
             a[num].set(ylim=(zmax,0),title='Soil DOC concentration',ylabel='Depth (m)',xlabel='Time')
         elif var=='DIC':
-            (marshcol['DIC_vr'].T[:10,start:end]/porosity[:10,:]/12).plot(ax=a[num],cbar_kwargs={'label':'DIC concentration\n(mmol L$^{-1}$)'})
+            (marshcol['DIC_vr'].T[:10,start:end]/porosity[:10,:]/12.011).plot(ax=a[num],cbar_kwargs={'label':'DIC concentration\n(mmol L$^{-1}$)'})
             a[num].set(ylim=(zmax,0),title='Soil DIC concentration',ylabel='Depth (m)',xlabel='Time')
         elif var=='CH4':
-            (marshcol['CH4_vr'].T[:10,start:end]/porosity[:10,:]*1e3/12).plot(ax=a[num],cbar_kwargs={'label':'CH4 concentration\n($\mu$mol L$^{-1}$)'})
+            (marshcol['CH4_vr'].T[:10,start:end]/porosity[:10,:]*1/12.011).plot(ax=a[num],cbar_kwargs={'label':'CH4 concentration\n(mmol L$^{-1}$)'},vmax=methane_vmax)
             a[num].set(ylim=(zmax,0),title='Soil CH4 concentration',ylabel='Depth (m)',xlabel='Time')
         elif var=='sulfate':
             (marshcol['soil_sulfate'].T[:10,start:end]/porosity[:10,:]).plot(ax=a[num],cbar_kwargs={'label':'Sulfate concentration\n(mmol L$^{-1}$)'},vmax=sulfate_vmax)
@@ -79,9 +80,9 @@ plot_tides(a.ravel())
 f,a=plt.subplots(nrows=5,ncols=2,clear=True,num='Tidal result: Months',figsize=(8,9))
 plot_tides(a.ravel(),start=int(8760/12*6),end=int(8760/12*7.5))
 
-f,a=plt.subplots(nrows=6,ncols=1,clear=True,num='Tide demo',figsize=(5,9),sharex=True)
-plot_tides(a,start=int(8760/12*6.1),end=int(8760/12*7.2),order=['H2OSFC','SWC','salinity','oxygen','sulfate','DOC'],zmax=0.45,sulfate_vmax=200)
-a[-1].xaxis.set_major_formatter(matplotlib.dates.DateFormatter('%b-%d'))
+f,a=plt.subplots(nrows=4,ncols=1,clear=True,num='Tide demo',figsize=(5,9),sharex=True)
+plot_tides(a,start=int(8760/12*6.1),end=int(8760/12*7.2),order=['H2OSFC','SWC','salinity','oxygen'],zmax=0.45,sulfate_vmax=200)
+a[-1].xaxis.set_major_formatter(format_nc_time('%b-%d'))
 
 # forcing=xarray.open_dataset('/home/b0u/tidesPLM_2018_gapfill.nc',decode_times=False)
 start=int(8760/12*5)
@@ -129,8 +130,9 @@ for n in range(12):
     a[0].plot(sal[x+n],z,c=cm(norm((marshcol['H2OSOI']/marshcol['watsat']).T.squeeze()[:7,start+n].mean())))
     a[1].plot(marshcol['soil_O2'][start:end,:10][x+n]*32,z,c=cm(norm((marshcol['H2OSOI']/marshcol['watsat']).T.squeeze()[:7,start+n].mean())),label='Moisture = %1.1f'%((marshcol['H2OSOI']/marshcol['watsat']).T.squeeze()[:7,start+n].mean()))
     a[3].plot((marshcol['H2OSOI']/marshcol['watsat']).T.squeeze()[:10,start+n],z,c=cm(norm((marshcol['H2OSOI']/marshcol['watsat']).T.squeeze()[:7,start+n].mean())))
-    a[2].plot(marshcol['DOC_vr'][start:end,:10][x+n],z,c=cm(norm((marshcol['H2OSOI']/marshcol['watsat']).T.squeeze()[:7,start+n].mean())),label='Moisture = %1.1f'%((marshcol['H2OSOI']/marshcol['watsat']).T.squeeze()[:7,start+n].mean()))
-    a[4].plot(marshcol['DIC_vr'][start:end,:10][x+n],z,c=cm(norm((marshcol['H2OSOI']/marshcol['watsat']).T.squeeze()[:7,start+n].mean())),label='Moisture = %1.1f'%((marshcol['H2OSOI']/marshcol['watsat']).T.squeeze()[:7,start+n].mean()))
+    a[2].plot(marshcol['DOC_vr'][start:end,:10][x+n]/12,z,c=cm(norm((marshcol['H2OSOI']/marshcol['watsat']).T.squeeze()[:7,start+n].mean())),label='Moisture = %1.1f'%((marshcol['H2OSOI']/marshcol['watsat']).T.squeeze()[:7,start+n].mean()))
+    a[4].plot(marshcol['DIC_vr'][start:end,:10][x+n]/12,z,c=cm(norm((marshcol['H2OSOI']/marshcol['watsat']).T.squeeze()[:7,start+n].mean())),label='Moisture = %1.1f'%((marshcol['H2OSOI']/marshcol['watsat']).T.squeeze()[:7,start+n].mean()))
+    a[4].plot(marshcol['CH4_vr'][start:end,:10][x+n]/12,z,c=cm(norm((marshcol['H2OSOI']/marshcol['watsat']).T.squeeze()[:7,start+n].mean())),label='Moisture = %1.1f'%((marshcol['H2OSOI']/marshcol['watsat']).T.squeeze()[:7,start+n].mean()),ls='--')
 
 # a[0].legend()
 zmax=0.5
@@ -248,7 +250,7 @@ a[0,3].set(title='Shad sulfide',xlabel='Sulfide concentration ($\mu$M)',ylabel='
 
 porosity=marshcol['watsat'].T.squeeze()[:10,start:end].to_masked_array()
 mod_sulfide_monthly=marshcol['soil_sulfide'].resample(time='1M').mean()[:,:10]*1e3/porosity[:10,0]
-mod_DOC_monthly=marshcol['DOC_vr'].resample(time='1M').mean()[:,:10]*1e3/porosity[:10,0]
+mod_DOC_monthly=marshcol['DOC_vr'].resample(time='1M').mean()[:,:10]*1e3/porosity[:10,0]/12.011
 mod_salinity_monthly=marshcol['soil_salinity'].resample(time='1M').mean()[:,:10]
 for m in range(5,10):
     a[2,3].plot(mod_sulfide_monthly.isel(time=m),mod_sulfide_monthly.levdcmp*100)

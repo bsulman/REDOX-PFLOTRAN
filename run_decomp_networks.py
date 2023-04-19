@@ -4,35 +4,35 @@ import plot_pf_output
 pflotran_exe='../pflotran-interface/src/pflotran/pflotran'
 
 # Simple decomposition network 1: 1 POM pool, one DOM pool, first order
-POM=decomp_network.decomp_pool(name='POM',CN=15,initval=1e3)
-DOM=decomp_network.decomp_pool(name='DOM1',CN=15,initval=1e-3,immobile=False)
-CO2=decomp_network.decomp_pool(name='CO2(aq)',immobile=False,initval=1e-15)
+POM=decomp_network.decomp_pool(name='POM',CN=15,initval=1e3,kind='immobile')
+DOM=decomp_network.decomp_pool(name='DOM1',CN=15,initval=1e-3,kind='primary')
+CO2=decomp_network.decomp_pool(name='CO2(aq)',kind='primary',initval=1e-15)
 POM_dissolve=decomp_network.reaction(name='POM dissolution (no inhibition)',reactant_pools={'POM':1.0},product_pools={'DOM1':1.0},rate_constant=0.1,reactiontype='SOMDECOMP')
 simple_network_DOM1 = decomp_network.decomp_network(pools=[POM,DOM,CO2],reactions=[POM_dissolve])
 
 
-DOM1_result,DOM1_units=decomp_network.PF_network_writer(simple_network_DOM1).run_simulation('SOMdecomp_template.txt','DOM1',pflotran_exe)
+DOM1_result,DOM1_units=decomp_network.PF_network_writer(simple_network_DOM1).run_simulation('SOMdecomp_template.txt','DOM1',pflotran_exe,CO2name='CO2(aq)')
 
 # Simple decomposition network 2: 1 POM pool, one DOM pool, inhibited by DOM
-POM=decomp_network.decomp_pool(name='POM',CN=15,initval=1e3)
-DOM=decomp_network.decomp_pool(name='DOM1',CN=15,initval=1e-3,immobile=False)
+POM=decomp_network.decomp_pool(name='POM',CN=15,initval=1e3,kind='immobile')
+DOM=decomp_network.decomp_pool(name='DOM1',CN=15,initval=1e-3,kind='primary')
 POM_dissolve_inhib=decomp_network.reaction(name='POM dissolution (inhibition)',reactant_pools={'POM':1.0},product_pools={'DOM1':1.0},rate_constant=0.1,
-                    inhibition_terms=[{'species':'DOM1','type':'MONOD','k':1e-2}])
+                    inhibition_terms=[{'species':'DOM1','type':'MONOD','k':1e-2}],reactiontype='SOMDECOMP')
 simple_network_DOM2 = decomp_network.decomp_network(pools=[POM,DOM,CO2],reactions=[POM_dissolve_inhib])
 
 
-DOM2_result,DOM2_units=decomp_network.PF_network_writer(simple_network_DOM2).run_simulation('SOMdecomp_template.txt','DOM2',pflotran_exe)
+DOM2_result,DOM2_units=decomp_network.PF_network_writer(simple_network_DOM2).run_simulation('SOMdecomp_template.txt','DOM2',pflotran_exe,CO2name='CO2(aq)')
 
 # Microbial decomposition network with priming effects
-microbes=decomp_network.decomp_pool(name='MICROBES',CN=10,initval=1e-3)
-SOM1=decomp_network.decomp_pool(name='SOM1',CN=10,initval=1.1e3)
+microbes=decomp_network.decomp_pool(name='MICROBES',CN=10,initval=1e-3,kind='immobile')
+SOM1=decomp_network.decomp_pool(name='SOM1',CN=10,initval=1.1e3,kind='immobile')
 
 
 priming_network = decomp_network.decomp_network(pools=[POM,microbes,SOM1,CO2])
-priming_network.add_reaction(decomp_network.reaction(name='POM decomposition',reactant_pools={'POM':1.0},product_pools={'MICROBES':0.6,CO2['name']:0.4},rate_constant=0.2,monod_terms=[{'species':'MICROBES','k':1e0}]))
-priming_network.add_reaction(decomp_network.reaction(name='SOM1 decomposition',reactant_pools={'SOM1':1.0},product_pools={'MICROBES':0.1,CO2['name']:0.9},rate_constant=10,monod_terms=[{'species':'MICROBES','k':1e0}]))
-priming_network.add_reaction(decomp_network.reaction(name='Microbial turnover',reactant_pools={'MICROBES':1.0},product_pools={CO2['name']:0.5,'SOM1':0.5},rate_constant=0.05,inhibition_terms=[{'species':'MICROBES','k':1e-5,'type':'INVERSE_MONOD'}]))
-priming_result,priming_units=decomp_network.PF_network_writer(priming_network).run_simulation('SOMdecomp_template.txt','priming',pflotran_exe)
+priming_network.add_reaction(decomp_network.reaction(name='POM decomposition',reactant_pools={'POM':1.0},product_pools={'MICROBES':0.6,CO2['name']:0.4},rate_constant=0.2,monod_terms=[{'species':'MICROBES','k':1e0}],reactiontype='SOMDECOMP'))
+priming_network.add_reaction(decomp_network.reaction(name='SOM1 decomposition',reactant_pools={'SOM1':1.0},product_pools={'MICROBES':0.1,CO2['name']:0.9},rate_constant=10,monod_terms=[{'species':'MICROBES','k':1e0}],reactiontype='SOMDECOMP'))
+priming_network.add_reaction(decomp_network.reaction(name='Microbial turnover',reactant_pools={'MICROBES':1.0},product_pools={CO2['name']:0.5,'SOM1':0.5},rate_constant=0.05,inhibition_terms=[{'species':'MICROBES','k':1e-5,'type':'INVERSE_MONOD'}],reactiontype='SOMDECOMP'))
+priming_result,priming_units=decomp_network.PF_network_writer(priming_network).run_simulation('SOMdecomp_template.txt','priming',pflotran_exe,CO2name='CO2(aq)',length_days=100)
 
 # A more complex decomposition network approximating the structure of the CORPSE model
 
@@ -83,16 +83,9 @@ decomp_network_CORPSE.add_reaction(decomp_network.reaction(reactant_pools={'NECR
                                 rate_constant=0.1,rate_units='y',name='Dissolution of necromass into DOM',reactiontype='SOMDECOMP',
                                 inhibition_terms=[{'species':'DOM1','k':1e-12,'type':'MONOD'}]) )     
 
-f,ax=subplots(num='CORPSE diagram',clear=True)
-layout=decomp_network.nx.drawing.nx_agraph.graphviz_layout
-pos=layout(decomp_network_CORPSE,prog='dot')
-# pos['CO2(aq)']=(80,18)
-decomp_network.draw_network(decomp_network_CORPSE,omit=[],arrowstyle='-|>',font_size='x-large',node_size=3000,pos=pos,node_alpha=0.95,
-    namechanges={'LABILE_POM':'Labile\nPOM','RESISTANT_POM':'Resistant\nPOM','SOIL_MICROBES':'Microbes', 
-                'NECROMASS':'Necro\nmass', 'HCO3-':'CO$_2$'},do_legend=False,font_color='w',connectionstyle='arc3, rad=0.1',font_weight='bold')
 
 
-CORPSE_result,CORPSE_units=decomp_network.PF_network_writer(decomp_network_CORPSE).run_simulation('SOMdecomp_template.txt','CORPSE',pflotran_exe)
+CORPSE_result,CORPSE_units=decomp_network.PF_network_writer(decomp_network_CORPSE).run_simulation('SOMdecomp_template.txt','CORPSE',pflotran_exe,CO2name='HCO3-')
 
 
 # CTC decomposition network
@@ -194,7 +187,7 @@ legend()
 layout=decomp_network.nx.drawing.nx_agraph.graphviz_layout
 ax=subplot(245)
 pos=layout(simple_network_DOM1,prog='dot')
-decomp_network.nx.draw_networkx(simple_network_DOM1,pos=pos,with_labels=True,ax=ax,nodes=simple_network_DOM1.nodes,node_color=decomp_network.make_nodecolors(simple_network_DOM1.nodes),arrowsize=20)
+decomp_network.draw_network_with_reactions(simple_network_DOM1,ax=ax,arrowsize=20)
 
 ax=subplot(246)
 pos=layout(priming_network,prog='dot')

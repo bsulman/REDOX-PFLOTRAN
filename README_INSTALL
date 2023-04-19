@@ -28,9 +28,11 @@ pip install nc-time-axis
 git clone --recursive https://github.com/bsulman/REDOX-PFLOTRAN.git
 
 # Build alquimia interface
+# Note, this step will fail if environment variables PETSC_DIR and PETSC_ARCH are not correct
 cd REDOX-PFLOTRAN/alquimia
 mkdir build
 cd build
+export PETSC_DIR=/software/user_tools/current/cades-ccsi/petsc-x/openmpi-1.10-gcc-5.3
 PETSC_ARCH='' cmake .. \
   -DCMAKE_INSTALL_PREFIX=. \
   -DCMAKE_C_COMPILER=$OPENMPI_DIR/bin/mpicc \
