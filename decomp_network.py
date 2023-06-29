@@ -816,7 +816,7 @@ node_colors={
 }
 
 
-def draw_network(network,omit=[],arrowsize=15,font_size='small',font_weight=None,arrowstyle='->',database_file='hanford.dat',do_legend=True,pos=None,node_colors=node_colors,node_alpha=0.8,label_edges=False,namechanges={},**kwargs):
+def draw_network(network,omit=[],arrowsize=15,font_size='small',font_weight=None,font_color='k',arrowstyle='->',database_file='hanford.dat',do_legend=True,pos=None,node_colors=node_colors,node_alpha=0.8,label_edges=False,namechanges={},**kwargs):
     to_draw=network.copy()
     for p in network.nodes:
         if network.nodes[p]['kind'] in omit or p in omit or p in ['HRimm','Tracer']:
@@ -835,7 +835,7 @@ def draw_network(network,omit=[],arrowsize=15,font_size='small',font_weight=None
     nodecats=categorize_nodes(to_draw)  
     nodecolors=[node_colors[nodecat] for nodecat in nodecats]
     
-    nx.draw_networkx_nodes(to_draw,pos=pos,with_labels=False,nodes=to_draw.nodes,node_color=nodecolors,alpha=node_alpha,**kwargs)
+    nx.draw_networkx_nodes(to_draw,pos=pos,node_color=nodecolors,alpha=node_alpha,**kwargs)
     nx.draw_networkx_edges(to_draw,pos=pos,arrowsize=arrowsize,arrowstyle=arrowstyle,**kwargs)
     nx.draw_networkx_labels(to_draw,pos=pos,labels={n:namechanges.get(n,n) for n in to_draw.nodes},font_size=font_size,font_weight=font_weight,**kwargs)
     
@@ -921,7 +921,8 @@ def draw_network_with_reactions(network,omit=[],arrowsize=15,font_size='small',f
             if namechanges.get(nodecats[num],nodecats[num]) not in legend_labels:
                 legend_labels.append(namechanges.get(nodecats[num],nodecats[num]))
                 if 'Reaction' in to_draw.nodes[node]['kind']:
-                    legend_handles.append(Line2D([0],[0],ls='None',marker=markers.get('Reaction','*'),ms=15.0,color=nodecolors[num]))
+                    if markers.get('Reaction','*') != 'None':
+                        legend_handles.append(Line2D([0],[0],ls='None',marker=markers.get('Reaction','*'),ms=15.0,color=nodecolors[num]))
                 elif 'mineral' in to_draw.nodes[node]['kind']:
                     legend_handles.append(Line2D([0],[0],ls='None',marker=markers.get('mineral','o'),ms=15.0,color=nodecolors[num]))
                 else:

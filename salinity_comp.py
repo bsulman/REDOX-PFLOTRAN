@@ -11,10 +11,10 @@ else:
 
 datadir=os.path.expanduser('~/ELM_outputs/')
 
-saline_plantsal=xarray.open_mfdataset([datadir+'test_alquimia_salinity_US-PHM_ICB20TRCNRDCTCBC/run/test_alquimia_salinity_US-PHM_ICB20TRCNRDCTCBC.elm.h0.%s-01-01-00000.nc'%yr for yr in yrs]).squeeze()
-saline=xarray.open_mfdataset([datadir+'test_alquimia_salinity_noplantsal_US-PHM_ICB20TRCNRDCTCBC/run/test_alquimia_salinity_noplantsal_US-PHM_ICB20TRCNRDCTCBC.elm.h0.%s-01-01-00000.nc'%yr for yr in yrs]).squeeze()
+saline_plantsal=xarray.open_mfdataset([datadir+'alquimia_salinity_US-PHM_ICB20TRCNRDCTCBC/run/alquimia_salinity_US-PHM_ICB20TRCNRDCTCBC.elm.h0.%s-01-01-00000.nc'%yr for yr in yrs]).squeeze()
+saline=xarray.open_mfdataset([datadir+'alquimia_salinity_noplantsal_US-PHM_ICB20TRCNRDCTCBC/run/alquimia_salinity_noplantsal_US-PHM_ICB20TRCNRDCTCBC.elm.h0.%s-01-01-00000.nc'%yr for yr in yrs]).squeeze()
 
-fresh=xarray.open_mfdataset([datadir+'test_alquimia_nosalinity_US-PHM_ICB20TRCNRDCTCBC/run/test_alquimia_nosalinity_US-PHM_ICB20TRCNRDCTCBC.elm.h0.%s-01-01-00000.nc'%yr for yr in yrs]).squeeze()
+fresh=xarray.open_mfdataset([datadir+'alquimia_nosalinity_US-PHM_ICB20TRCNRDCTCBC/run/alquimia_nosalinity_US-PHM_ICB20TRCNRDCTCBC.elm.h0.%s-01-01-00000.nc'%yr for yr in yrs]).squeeze()
 
 import pandas,matplotlib.dates
 WT_shad=pandas.read_csv('/home/b0u/PIE_porewater_WT_data/knb-lter-pie.569.1/MAR-RO-Wtable-Shad-2019.csv',
@@ -29,17 +29,19 @@ porewater1=pandas.read_csv('/home/b0u/PIE_porewater_WT_data/knb-lter-pie.71.6/MA
                         parse_dates=['Date'],na_values='NA')
 porewater2=pandas.read_csv('/home/b0u/PIE_porewater_WT_data/knb-lter-pie.34.20/PIE_MP_porewater_2022.csv',
                         parse_dates=[['YEAR','MONTH','DAY']],na_values='NA')
+fluxdata=pandas.read_excel('/home/b0u/PIE_porewater_WT_data/knb-lter-pie.503.2 (Flux data)/MAR-SH-EddyFluxTower-2015_v2.xlsx',sheet_name=1,index_col=0)
 
 vars2=['H2OSFC','salinity','temperature']
 vars=['Sulfate','Sulfide','DOC','DIC','CH4','pH']
-vmax={'sulfate':25.0,'DOC':7.0,'CH4':1.5,'sulfide':4.5,'salinity':30}
+vmax={'sulfate':25.0,'CH4':1.5,'sulfide':1.0,'salinity':30,'DIC':10.0,'pH':8.8}
+vmin={'salinity':0.0,'pH':6.6,'sulfate':0.0}
 f,a=plt.subplots(ncols=3,nrows=len(vars),num='Salinity contour comp',clear=True,figsize=(9,9.5))
 f2,a2=plt.subplots(ncols=2,nrows=len(vars2),num='Salinity contour comp 2',clear=True,figsize=(9,8))
-start=0 #int(8760/12*5)
-end=len(saline['time'])-1 #int(8760/12*7)
-pltELM.plot_vars(saline.isel(time=slice(start,end)),vars,a_contour=a[:,0],a_profile=a[:,2],profile_color='orange',vmax=vmax,do_snapshots=False,mean_profile=True,quantiles=[0.1,0.9])
-pltELM.plot_vars(fresh.isel(time=slice(start,end)),vars,a_contour=a[:,1],a_profile=a[:,2],profile_color='blue',vmax=vmax,do_snapshots=False,mean_profile=True,quantiles=[0.1,0.9])
-pltELM.plot_vars(saline.isel(time=slice(start,end)),vars2,a_contour=a2[:,0],a_profile=a2[:,1],profile_color='orange',vmax=vmax,do_snapshots=False,mean_profile=True,quantiles=[0.1,0.9])
+start=f'{yrs[0]:d}-04-30'
+end=f'{yrs[-1]:d}-11-01'
+pltELM.plot_vars(saline.sel(time=slice(start,end)),vars,a_contour=a[:,0],a_profile=a[:,2],profile_color='orange',vmax=vmax,vmin=vmin,do_snapshots=False,mean_profile=True,quantiles=[0.1,0.9])
+pltELM.plot_vars(fresh.sel(time=slice(start,end)),vars,a_contour=a[:,1],a_profile=a[:,2],profile_color='blue',vmax=vmax,vmin=vmin,do_snapshots=False,mean_profile=True,quantiles=[0.1,0.9])
+pltELM.plot_vars(saline.sel(time=slice(start,end)),vars2,a_contour=a2[:,0],a_profile=a2[:,1],profile_color='orange',vmax=vmax,vmin=vmin,do_snapshots=False,mean_profile=True,quantiles=[0.1,0.9])
 # pltELM.plot_vars(fresh.isel(time=slice(start,end)),'fresh',vars2,a=a2[:,[1,2]],profile_color='blue',vmax=vmax,do_snapshots=False,mean_profile=True,quantiles=[0.1,0.9])
 
 Shad4=porewater1.set_index('Location').loc['Shad-4m']
@@ -62,6 +64,39 @@ a2[0,0].set_xlim(a2[1,0].get_xlim())
 pltELM.letter_label(a)
 pltELM.letter_label(a2)
 
+for z in [2,10,20,40]:
+    mid=fluxdata[f'TS{z:d}'].mean()
+    left=fluxdata[f'TS{z:d}'].quantile(0.1)
+    right=fluxdata[f'TS{z:d}'].quantile(0.9)
+    a2[vars2.index('temperature'),-1].errorbar(mid,z/100,xerr=np.array([[mid-left],[right-mid]]),c='k',marker='o')
+
+a2[vars2.index('temperature'),-1].set_xlim(right=28)
+
+f,a=plt.subplots(ncols=2,nrows=3,num='Iron',clear=True,figsize=(6.4,7))
+vmax['FeS']=saline['soil_FeS'].T.squeeze()[:8,:].max().compute()
+vmax['Fe2']=(fresh['soil_Fe2'].T.squeeze()[:9,:]/(saline['watsat'].T.squeeze()[:9,:].to_masked_array())).compute().quantile(0.95)
+# vmax['FeS']=480
+vmin['FeS']=0
+# vmax['FeOxide']=550
+vmin['FeOxide']=0.0
+pltELM.plot_vars(saline.sel(time=slice(start,end)),['Fe2'],a_profile=a[0,1],profile_color='orange',vmax=vmax,vmin=vmin,do_snapshots=False,mean_profile=True,quantiles=[0.1,0.9])
+pltELM.plot_vars(fresh.sel(time=slice(start,end)),['Fe2'],a_contour=a[0,0],a_profile=a[0,1],profile_color='blue',vmax=vmax,vmin=vmin,do_snapshots=False,mean_profile=True,quantiles=[0.1,0.9])
+a[0,1].legend(['Saline','Fresh'])
+pltELM.plot_vars(saline.sel(time=slice(start,end)),['FeOxide','FeS'],a_profile=a[[1,2],1],profile_color='orange',vmax=vmax,vmin=vmin,do_snapshots=False,mean_profile=True,quantiles=[0.1,0.9])
+pltELM.plot_vars(fresh.sel(time=slice(start,end)),['FeOxide','FeS'],a_profile=a[[1,2],1],profile_color='blue',vmax=vmax,vmin=vmin,do_snapshots=False,mean_profile=True,quantiles=[0.1,0.9])
+# (fresh['soil_FeOxide'].T.squeeze()[:10,:].diff(dim='time')*1e3).mean(dim='time').plot(ax=a[1,0],vmin=-3e-2,vmax=3e-2,cmap='RdBu_r',cbar_kwargs={'label':'Fe Oxide change (mmol m$^{-3}$ day$^{-1}$)'})
+a[1,0].plot((fresh['soil_FeOxide'].T.squeeze()[:10,:].diff(dim='time')*1e3*24).mean(dim='time'),fresh['levdcmp'][:10],c='blue')
+a[1,0].plot((saline['soil_FeOxide'].T.squeeze()[:10,:].diff(dim='time')*1e3*24).mean(dim='time'),fresh['levdcmp'][:10],c='orange')
+a[1,0].set(title='Fe oxide change',ylim=(1.5,0),xlabel='Fe Oxide change (mmol Fe m$^{-3}$ day$^{-1}$)',ylabel='Soil depth (m)',xlim=(-2.1e-2,3e-2))
+a[1,0].axvline(0,c='k',lw=0.5,ls=':')
+
+a[2,0].plot((fresh['soil_FeS'].T.squeeze()[:10,:].diff(dim='time')*1e3*24).mean(dim='time'),fresh['levdcmp'][:10],c='blue')
+a[2,0].plot((saline['soil_FeS'].T.squeeze()[:10,:].diff(dim='time')*1e3*24).mean(dim='time'),fresh['levdcmp'][:10],c='orange')
+a[2,0].set(title='Fe sulfide change',ylim=(1.5,0),xlabel='Fe Sulfide change (mmol Fe m$^{-3}$ day$^{-1}$)',ylabel='Soil depth (m)')
+a[2,0].axvline(0,c='k',lw=0.5,ls=':')
+
+pltELM.letter_label(a)
+
 # start_zoom='%d-04-15'%yrs[-1] #int(8760/12*5)
 # end_zoom='%d-08-31'%yrs[-1] #int(8760/12*7)
 # f,a=plt.subplots(ncols=3,nrows=len(vars),num='Salinity contour comp zoomed',clear=True,figsize=(8,9))
@@ -70,25 +105,47 @@ pltELM.letter_label(a2)
 
 # a[-1,2].legend(labels=['Saline','Fresh'])
 
-f,a=plt.subplots(num='GHG fluxes',clear=True,nrows=2)
+CH4flux_obs=pandas.read_excel('/home/b0u/PIE_porewater_WT_data/PLM_CH4_gap-filled.xlsx',sheet_name=0,index_col=0)
+import datetime
+CH4flux_resampled=(CH4flux_obs['gap-filled'].resample('7D').mean()*1e-3)
+
+f,a=plt.subplots(num='GHG fluxes',clear=True,nrows=4,figsize=(5.6,8.5))
 # (saline['CH4FLUX_ALQUIMIA']/12.011*1e6).plot(ax=a,c='orange',label='Saline')
 # (fresh['CH4FLUX_ALQUIMIA']/12.011*1e6).plot(ax=a,c='blue',label='Fresh')
 (saline['CH4FLUX_ALQUIMIA']/12.011*1e6).resample(time='7D').mean().plot(ax=a[0],c='orange',label='Saline')
 (fresh['CH4FLUX_ALQUIMIA']/12.011*1e6).resample(time='7D').mean().plot(ax=a[0],c='blue',label='Fresh')
 (saline_plantsal['CH4FLUX_ALQUIMIA']/12.011*1e6).resample(time='7D').mean().plot(ax=a[0],c='red',label='Saline + plant response')
+
+(saline['CH4FLUX_ALQUIMIA']/12.011*1e6).resample(time='7D').mean().plot(ax=a[1],c='orange',label='Saline')
+(fresh['CH4FLUX_ALQUIMIA']/12.011*1e6).resample(time='7D').mean().plot(ax=a[1],c='blue',label='Fresh')
+(saline_plantsal['CH4FLUX_ALQUIMIA']/12.011*1e6).resample(time='7D').mean().plot(ax=a[1],c='red',label='Saline + plant response')
+
+
+a[0].plot(fresh['time'][0].item()+(CH4flux_resampled.index-datetime.datetime(2019,1,1)).to_pytimedelta(),
+        CH4flux_resampled,c='red',label='Saline obs',linestyle='--')
+
 a[0].set(title='Methane flux',xlabel='Time',ylabel='Methane flux ($\mu$mol m$^{-2}$ s$^{-1}$)')
 a[0].legend()
 
-(saline['HR']/12.011*1e6).resample(time='7D').mean().plot(ax=a[1],c='orange',label='Saline')
-(fresh['HR']/12.011*1e6).resample(time='7D').mean().plot(ax=a[1],c='blue',label='Fresh')
-(saline_plantsal['HR']/12.011*1e6).resample(time='7D').mean().plot(ax=a[1],c='red',label='Saline + plant response')
+a[1].plot(fresh['time'][0].item()+(CH4flux_resampled.index-datetime.datetime(2019,1,1)).to_pytimedelta(),
+        CH4flux_resampled,c='red',label='Saline obs',linestyle='--')
 
-(saline['DIC_RUNOFF']/12.011*1e6).resample(time='7D').mean().plot(ax=a[1],c='orange',ls='--')
-(fresh['DIC_RUNOFF']/12.011*1e6).resample(time='7D').mean().plot(ax=a[1],c='blue',ls='--')
-(saline_plantsal['DIC_RUNOFF']/12.011*1e6).resample(time='7D').mean().plot(ax=a[1],c='red',ls='--')
-
-a[1].set(title='Soil CO$_2$ flux',xlabel='Time',ylabel='CO$_2$ flux ($\mu$mol m$^{-2}$ s$^{-1}$)')
+a[1].set(title='Methane flux',xlabel='Time',ylabel='Methane flux ($\mu$mol m$^{-2}$ s$^{-1}$)',ylim=(-0.001,0.005))
 a[1].legend()
+a[1].axhline(0.0,c='k',lw=0.5,ls=':')
+
+(saline['HR']/12.011*1e6).resample(time='7D').mean().plot(ax=a[2],c='orange',label='Saline')
+(fresh['HR']/12.011*1e6).resample(time='7D').mean().plot(ax=a[2],c='blue',label='Fresh')
+(saline_plantsal['HR']/12.011*1e6).resample(time='7D').mean().plot(ax=a[2],c='red',label='Saline + plant response')
+a[2].set(title='Soil CO$_2$ flux',xlabel='Time',ylabel='CO$_2$ flux ($\mu$mol m$^{-2}$ s$^{-1}$)')
+a[2].legend()
+
+(saline['DIC_RUNOFF']/12.011*1e6).resample(time='7D').mean().plot(ax=a[3],c='orange',ls='-')
+(fresh['DIC_RUNOFF']/12.011*1e6).resample(time='7D').mean().plot(ax=a[3],c='blue',ls='-')
+(saline_plantsal['DIC_RUNOFF']/12.011*1e6).resample(time='7D').mean().plot(ax=a[3],c='red',ls='-')
+a[3].set(title='Soil lateral DIC flux',xlabel='Time',ylabel='DIC flux ($\mu$mol C m$^{-2}$ s$^{-1}$)')
+# a[3].legend()
+a[3].set_ylim(bottom=-0.01)
 
 pltELM.letter_label(a)
 
@@ -97,7 +154,10 @@ pltELM.plot_vars(fresh,['soilC'],'SOC',a_profile=[a],profile_color='blue',do_sna
 pltELM.plot_vars(saline,['soilC'],'SOC',a_profile=[a],profile_color='orange',do_snapshots=False,mean_profile=True,quantiles=[0.1,0.9],maxdepth=1.0)
 pltELM.plot_vars(saline_plantsal,['soilC'],'SOC',a_profile=[a],profile_color='red',do_snapshots=False,mean_profile=True,quantiles=[0.1,0.9],maxdepth=1.0)
 # pltELM.letter_label(a)
-a.legend(labels=['Fresh','Saline','Saline + reduced GPP'])
+soilprofile=pandas.read_csv('/home/b0u/PIE_porewater_WT_data/Spivak_soil_profiles/dataset-827298_bulk-soil-properties__v1.tsv',delimiter='\t',na_values=['nd'])
+profile_gr=soilprofile[(soilprofile['Location']=='MARSH')].groupby(['Depth_min'])
+a.errorbar(profile_gr['Carbon_Density'].mean()*1e3/1e6,profile_gr['Depth_min'].mean()/100,xerr=profile_gr['Carbon_Density'].sem()*1e3/1e6)
+a.legend(labels=['Fresh','Saline','Saline + reduced GPP','Obs'],handles=a.lines)
 
 start_zoom='%d-07-15 01:00'%yrs[-1] #int(8760/12*5)
 end_zoom='%d-07-16 03:00'%yrs[-1] #int(8760/12*7)
@@ -210,7 +270,7 @@ a[0,1].set(title='Shad salinity',xlabel='Salinity (ppt)',ylabel='Depth (cm)',yli
 a[0,2].set(title='Shad DOC',xlabel='DOC concentration ($\mu$M)',ylabel='Depth (cm)',ylim=(100,0))
 a[0,3].set(title='Shad sulfide',xlabel='Sulfide concentration ($\mu$M)',ylabel='Depth (cm)',ylim=(100,0))
 
-porosity=marshcol['watsat'].T.squeeze()[:10,start:end].to_masked_array()
+porosity=marshcol['watsat'].sel(time=slice(start,end)).T.squeeze()[:10,:].to_masked_array()
 mod_sulfide_monthly=marshcol['soil_sulfide'].resample(time='1M').mean()[:,:10]*1e3/porosity[:10,0]
 mod_DOC_monthly=marshcol['DOC_vr'].resample(time='1M').mean()[:,:10]*1e3/porosity[:10,0]/12.011
 mod_salinity_monthly=marshcol['soil_salinity'].resample(time='1M').mean()[:,:10]

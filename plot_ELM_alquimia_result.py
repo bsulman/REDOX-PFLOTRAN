@@ -34,7 +34,7 @@ def plot_var(vardata,contourax=None,profileax=None,vmax=None,vmin=None,label=Non
         profileax.set_xlim(left=vmin,right=vmax)
 
 
-def plot_vars(data,vars,plotname=None,figsize=(4,4),maxdepth=1.5,vmax={},a_contour=None,a_profile=None,profile_color='gray',mean_profile=True,do_snapshots=False,quantiles=[0.1,0.9]):
+def plot_vars(data,vars,plotname=None,figsize=(4,4),maxdepth=1.5,vmax={},vmin={},a_contour=None,a_profile=None,profile_color='gray',mean_profile=True,do_snapshots=False,quantiles=[0.1,0.9]):
     if a_contour is None and a_profile is None:
         f,a=plt.subplots(num=plotname,clear=True,nrows=len(vars),ncols=2,gridspec_kw={'width_ratios':[1,0.5]},figsize=figsize,squeeze=False)
         a_contour=a[:,0]
@@ -50,9 +50,9 @@ def plot_vars(data,vars,plotname=None,figsize=(4,4),maxdepth=1.5,vmax={},a_conto
     profileax=None
     for varnum,var in enumerate(vars):
         if a_contour is not None:
-            contourax = a_contour[varnum]
+            contourax = np.atleast_1d(a_contour)[varnum]
         if a_profile is not None:
-            profileax = a_profile[varnum]
+            profileax = np.atleast_1d(a_profile)[varnum]
         if var=='VWC' or var=='SWC':
             plot_var((data['H2OSOI'].T.squeeze()[:10,:]/porosity),contourax,profileax,vmax=1.0,vmin=0.0,
                     label='Volumetric water\n(fraction of saturation)',cmap='Blues',
@@ -103,14 +103,14 @@ def plot_vars(data,vars,plotname=None,figsize=(4,4),maxdepth=1.5,vmax={},a_conto
                      mean_profile=mean_profile,quantiles=quantiles,
                      maxdepth=maxdepth,title='Soil organic C',axlabel='SOC (g C/cm$^3$)')
         elif var=='Fe2':
-            Fe2=data['soil_Fe2'].T.squeeze()[:10,:]/watervol*1000
+            Fe2=data['soil_Fe2'].T.squeeze()[:10,:]/watervol
             if 'Fe2' in vmax:
                 vmax_Fe2=vmax['Fe2']
             else:
                 vmax_Fe2=Fe2.load()[:7,:].quantile(0.95)
-            plot_var(Fe2,contourax,profileax,vmax=vmax_Fe2,label='Fe(II) concentration\n($\mu$mol Fe/L H$_2$O)',
+            plot_var(Fe2,contourax,profileax,vmax=vmax_Fe2,label='Fe(II) concentration\n(mmol Fe/L H$_2$O)',
                      snapshots=snapshots,profile_color=profile_color,mean_profile=mean_profile,quantiles=quantiles,
-                     maxdepth=maxdepth,title='Fe(II) concentration',axlabel='Fe(II) ($\mu$mol Fe/L H$_2$O)')
+                     maxdepth=maxdepth,title='Fe(II) concentration',axlabel='Fe(II) (mmol Fe/L H$_2$O)')
         elif var=='FeOxide':
             FeOxide=data['soil_FeOxide'].T.squeeze()[:10,:]
             if 'FeOxide' in vmax:
@@ -120,13 +120,19 @@ def plot_vars(data,vars,plotname=None,figsize=(4,4),maxdepth=1.5,vmax={},a_conto
             plot_var(FeOxide,contourax,profileax,vmax=vmax_FeOxide,label='Fe oxide concentration\n(mol Fe/m$^3$)',
                      snapshots=snapshots,profile_color=profile_color,mean_profile=mean_profile,quantiles=quantiles,
                      maxdepth=maxdepth,title='Fe oxide concentration',axlabel='Fe oxide (mol Fe/m$^3$)')
+        elif var=='FeS':
+            plot_var(data['soil_FeS'].T.squeeze()[:10,:],contourax,profileax,vmax=vmax.get('FeS',data['soil_FeS'].T.squeeze()[:10,:].max().compute()),
+                     vmin=vmin.get('FeS',data['soil_FeS'].T.squeeze()[:10,:].min().compute()),
+                     label='Fe sulfide concentration\n(mol Fe/m$^3$)',
+                     snapshots=snapshots,profile_color=profile_color,mean_profile=mean_profile,quantiles=quantiles,
+                     maxdepth=maxdepth,title='Fe sulfide concentration',axlabel='Fe sulfide (mol Fe/m$^3$)')
         elif var=='pH':
             pH=data['soil_pH'].T.squeeze()[:10,:]
             if 'pH' in vmax:
                 vmax_pH=vmax['pH']
             else:
                 vmax_pH=pH.max().compute()
-            plot_var(pH,contourax,profileax,vmin=3.5,vmax=vmax_pH,label='pH',snapshots=snapshots,
+            plot_var(pH,contourax,profileax,vmin=vmin.get('pH',pH.min().compute()),vmax=vmax_pH,label='pH',snapshots=snapshots,
                      profile_color=profile_color,mean_profile=mean_profile,quantiles=quantiles,
                      maxdepth=maxdepth,title='Soil pH',axlabel='Soil pH')
         elif var=='Sulfate' or var=='sulfate':
@@ -135,7 +141,7 @@ def plot_vars(data,vars,plotname=None,figsize=(4,4),maxdepth=1.5,vmax={},a_conto
                 vmax_sulfate=vmax['sulfate']
             else:
                 vmax_sulfate=sulfate.load()[:7,:].quantile(0.95)
-            plot_var(sulfate,contourax,profileax,vmax=vmax_sulfate,label='Sulfate concentration\n(mmol/L H$_2$O)',
+            plot_var(sulfate,contourax,profileax,vmax=vmax_sulfate,vmin=vmin.get('sulfate',0.0),label='Sulfate concentration\n(mmol/L H$_2$O)',
                      snapshots=snapshots,profile_color=profile_color,mean_profile=mean_profile,quantiles=quantiles,
                      maxdepth=maxdepth,title='Sulfate concentration',axlabel='Sulfate (mmol/L H$_2$O)')
         elif var=='Sulfide' or var=='sulfide':
@@ -154,7 +160,7 @@ def plot_vars(data,vars,plotname=None,figsize=(4,4),maxdepth=1.5,vmax={},a_conto
                      snapshots=snapshots,profile_color=profile_color,mean_profile=mean_profile,quantiles=quantiles,
                      maxdepth=maxdepth,title='Vertical water flow',axlabel='Water flow (mm/hour)')
         elif var=='salinity':
-            plot_var(data['soil_salinity'].squeeze().T[:10,:],contourax,profileax,vmax=vmax.get('salinity',50),label='Salinity (ppt)',
+            plot_var(data['soil_salinity'].squeeze().T[:10,:],contourax,profileax,vmax=vmax.get('salinity',50),vmin=vmin.get('salinity',None),label='Salinity (ppt)',
                      snapshots=snapshots,profile_color=profile_color,mean_profile=mean_profile,quantiles=quantiles,
                      maxdepth=maxdepth,title='Soil salinity',axlabel='Salinity (ppt)')
         elif var=='temperature':
@@ -185,13 +191,25 @@ def plot_vars(data,vars,plotname=None,figsize=(4,4),maxdepth=1.5,vmax={},a_conto
             if profileax is not None:
                 profileax.set_visible(False)
             contourax.axhline(0.0,c='k',lw=0.5,ls=':')
+        elif var=='latflow':
+            (data['QFLX_LAT_AQU'].squeeze()).plot(ax=contourax)
+            contourax.set(title='Lateral water flow into column',xlabel='Time',ylabel='Water flow rate\n(mm s$^{-1}$)')
+            if profileax is not None:
+                profileax.set_visible(False)
+            contourax.axhline(0.0,c='k',lw=0.5,ls=':')
+        elif var=='drain':
+            (data['QDRAI'].squeeze()).plot(ax=contourax)
+            contourax.set(title='Drainage flow',xlabel='Time',ylabel='Water flow rate\n(mm s$^{-1}$)')
+            if profileax is not None:
+                profileax.set_visible(False)
+            contourax.axhline(0.0,c='k',lw=0.5,ls=':')
         elif var=='CH4flux':
             (data['CH4FLUX_ALQUIMIA'].squeeze()/12.011*1e6).plot(ax=contourax)
             if profileax is not None:
                 profileax.set_visible(False)
             contourax.set(title='Methane flux',xlabel='Time',ylabel='Methane flux ($\mu$mol m$^{-2}$ s$^{-1}$)')
         
-        if((data['time'][-1].item()-data['time'][0].item()).days<365):
+        if((data['time'][-1].item()-data['time'][0].item()).days<365 and contourax is not None):
             contourax.xaxis.set_major_formatter(format_nc_time('%b-%d'))
 
 # Fix an issue with dates from model netCDF output not formatting correctly
@@ -217,25 +235,7 @@ if __name__ == '__main__':
     plot_vars(data,plotname='Water and oxygen',vars=['VWC','O2','frozen','temperature'],figsize=(6,8.5),maxdepth=2.2,vmax={'vertflow':1e-1})
     plot_vars(data,plotname='Carbon',vars=['soilC','DOC','DIC','CH4'],figsize=(6,8.5),vmax={'DOC':10.0,'DIC':10.0},maxdepth=2.2)
     plot_vars(data,plotname='Redox',vars=['Fe2','FeOxide','Sulfate','Sulfide','pH'],figsize=(6,8.5),maxdepth=2.2,vmax={'pH':9.0})
-
-
-    if 'SIC_vr' in data:
-        maxdepth=2.2
-        calcite=data['SIC_vr'].T.squeeze()[:10,:]
-        # f,a=plt.subplots(num='Calcite',clear=True,nrows=1,ncols=2,gridspec_kw={'width_ratios':[1,0.5]},figsize=(6,3))
-        f,a=plt.subplot_mosaic(
-            '''
-            AB
-            C.
-            ''',
-            gridspec_kw={'width_ratios':[1,0.5],'height_ratios':[1,0.5]},num='Soil inorganic C',clear=True,
-        )
-        (calcite).plot(ax=a['A'],cbar_kwargs={'label':'Soil inorganic C concentration (mol C/m$^3$)'})
-        a['B'].plot((calcite).mean(dim='time'),z)
-        a['A'].set(title='Soil inorganic C concentration',ylim=(maxdepth,0),xlabel='Time (year)',ylabel='Soil depth (m)')
-        a['B'].set(title='Soil inorganic C concentration',ylim=(maxdepth,0),xlabel='Soil inorganic C (mol C/m$^3$)',ylabel='Soil depth (m)')
-        (calcite*dz[:,None]).sum(dim='levdcmp').plot(ax=a['C'])
-        a['C'].set(title='Column total soil inorganic C',xlabel='Time (year)',ylabel='Total soil inorganic C (g C/m$^2$)',xlim=a['A'].get_xlim())
+    plot_vars(data,plotname='Hydro',vars=['H2OSFC','salinity','drain','latflow'])
 
 
     f,a=plt.subplots(num='Carbon time series',clear=True,nrows=3)

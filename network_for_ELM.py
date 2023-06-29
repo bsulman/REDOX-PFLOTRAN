@@ -138,16 +138,19 @@ def make_aqueous_network(
         H2_scale=0.1,
         CO2_scale=0.1,
         CH4_scale=1e-3,
-        sulfate_scale=0.02,
+        sulfate_scale=5e-3,
         Fe_scale=1e-9,
         anox_ratemod=1e-2,
         Fe=True,
         calcite=False,
         methane=False,
         sulfate=True,
-        DOM_CN=100.0,
-        Eact=1e5, # PFLOTRAN uses Arrhenius equation, Eact in units of J/mol, T0=25 C: Arr(T[C])=exp(Eact/8.314*(1/298.15-1/(T+273.15)))
-        init_FeOxide=0.0,FeS_rate=0.0,
+        DOM_CN=20.0,
+        # Eact = 5e4 gives Q10 ~ 2
+        Eact=5e4,Eact_methane=8e4,Eact_sulfatered=8e4, # PFLOTRAN uses Arrhenius equation, Eact in units of J/mol, T0=25 C: Arr(T[C])=exp(Eact/8.314*(1/298.15-1/(T+273.15)))
+        init_FeOxide=0.0,FeS_rate=0.0,init_FeSulfide=0.0,
+        DOM_Fe_content=0.5e-3,
+        DOM_sulfur_content = 0.01,
                                 ):
         # CTC decomposition network
 
@@ -201,10 +204,10 @@ def make_aqueous_network(
                 # Convert these from ppt by mass to mol/L
                 decomp_network.decomp_pool(name='Cl-',kind='primary',constraints={'initial':1.0e-6/(35.453*1.80655*1000)}),
                 decomp_network.decomp_pool(name='Na+',kind='primary',constraints={'initial':1.0e-6/(35.453*1.80655*1000)}),
-                decomp_network.decomp_pool(name='Halite',rate='1.d-10 mol/m^2-sec',constraints={'initial':'0.0  80.0 m^2/m^3'},kind='mineral'),
+                decomp_network.decomp_pool(name='Halite',rate='1.d-10 mol/m^2-sec',constraints={'initial':'0.0  1000.0 m^2/m^3'},kind='mineral'),
 
-                decomp_network.decomp_pool(name='SO4--',kind='primary',constraints={'initial':1e-5}),
-                decomp_network.decomp_pool(name='HS-',kind='primary',constraints={'initial':tinyval}),
+                decomp_network.decomp_pool(name='SO4--',kind='primary',constraints={'initial':'1e-5 M Pyrite'}),
+                decomp_network.decomp_pool(name='HS-',kind='primary',constraints={'initial':'1e-8 G H2S(g)'}),
                 decomp_network.decomp_pool(name='H2S(aq)',kind='secondary'),
                 decomp_network.decomp_pool(name='H2SO4(aq)',kind='secondary'),
                 decomp_network.decomp_pool(name='HSO4-',kind='secondary'),
@@ -214,16 +217,21 @@ def make_aqueous_network(
                 # solubility in hanford.dat: Pyrrhotite + H+ <-> Fe++ + HS-, log(K) = -3.6 (Rickard found -3.5)
                 # Kinetics: Rickard says reaction reached equilibrium in 2-6 hours, but specific kinetics are unknown
                 # Wolthers et al 2005 reports SSA of 350 m2/g
-                decomp_network.decomp_pool(name='Pyrrhotite',kind='mineral',rate=f'{FeS_rate:1.4f} mol/m^2/s',constraints={'initial':'0.0 1000.0 m^2/m^3'}),
+                # But Luther et al (1982) suggests that in salt marshes it's mostly pyrite and can form as fast as 1 day
+                decomp_network.decomp_pool(name='Pyrrhotite',kind='mineral',rate=f'{FeS_rate:1.4g} mol/m^2-s',constraints={'initial':f'{init_FeSulfide*0.1:1.4g} 1000.0 m^2/m^3'}),
+                decomp_network.decomp_pool(name='Pyrite',kind='mineral',rate=f'{FeS_rate/100:1.4g} mol/m^2-s',constraints={'initial':f'{init_FeSulfide:1.4g} 1000.0 m^2/m^3'}),
+
 
                 decomp_network.decomp_pool(name='H2O',kind='implicit'),
 
-                decomp_network.decomp_pool(name='Fe+++',kind='primary',constraints={'initial':'.37e-5 M Fe(OH)3'}),
-                decomp_network.decomp_pool(name='Fe++',kind='primary',constraints={'initial':1e-6}),
+                decomp_network.decomp_pool(name='Fe+++',kind='primary',constraints={'initial':'.37e-5 M Goethite'}),
+                decomp_network.decomp_pool(name='Fe++',kind='primary',constraints={'initial':'30e-6'}),
                 decomp_network.decomp_pool(name='FeIIIDOM1(aq)',kind='secondary'),
                 decomp_network.decomp_pool(name='FeIIDOM1(aq)',kind='secondary'),
                 # Specifying SSA on mass basis messes up repeated constraint equilibration for some reason
-                decomp_network.decomp_pool(name='Fe(OH)3',rate='1.d-9 mol/m^2-sec',constraints={'initial':f'{init_FeOxide:1.4f}  80.0 m^2/m^3'},kind='mineral'),  
+                decomp_network.decomp_pool(name='Fe(OH)3',rate='1.d-10 mol/m^2-sec',constraints={'initial':f'{init_FeOxide*0:1.4g}  1000.0 m^2/m^3'},kind='mineral'),  
+                # Luther et al (1982) suggests that iron oxides in salt marsh sediments are mostly goethite
+                decomp_network.decomp_pool(name='Goethite',rate='1.d-13 mol/m^2-sec',constraints={'initial':f'{init_FeOxide*1.0:1.4g}  1000.0 m^2/m^3'},kind='mineral'),  
 
                 decomp_network.decomp_pool(name='CH4(aq)',kind='primary',constraints={'initial':'1900e-9 G CH4(g)'}), # ~1900 ppb atmospheric concentration https://gml.noaa.gov/ccgg/trends_ch4/
                 decomp_network.decomp_pool(name='CH4(g)',kind='gas'),
@@ -239,14 +247,10 @@ def make_aqueous_network(
                         decomp_network.decomp_pool(name='Calcite',rate='1.d-6 mol/m^2-sec',constraints={'initial':'0.d-6  80.0'},kind='mineral'),
                 ])
 
-        DOM_inhib=DOM_scale*5
-        if Fe:
-                DOM_Fe_content=1e-3
-        else:
+        DOM_inhib=DOM_scale*3
+        if not Fe:
                 DOM_Fe_content=0.0
-        if sulfate:
-                DOM_sulfur_content = 1.0/400
-        else:
+        if not sulfate:
                 DOM_sulfur_content = 0.0
         reactions = [
                 # CWD decomposition to  litter
@@ -404,7 +408,7 @@ def make_aqueous_network(
                 decomp_network.reaction(name='Fermentation',reactant_pools={'DOM1':1.0,'H2O':1/3},
                         product_pools={'Acetate-':1/3,'CO2(aq)':1/3,'H+':1/3,'H2(aq)':2/3,
                                 'NH4+':1.0/DOM_CN*catomw/natomw,'Fe+++':DOM_Fe_content,'SO4--':DOM_sulfur_content}, 
-                        rate_constant=1.5e-7,reactiontype='MICROBIAL', activation_energy=Eact,
+                        rate_constant=5e-7,reactiontype='MICROBIAL', activation_energy=Eact,
                         inhibition_terms=[decomp_network.inhibition(species='O2(aq)',k=O2_scale,type='MONOD'),
                                         decomp_network.inhibition(species='Acetate-',k=acetate_scale*0.5,type='MONOD'),
                                         decomp_network.inhibition(species='H+',k=1e-4,type='MONOD'),
@@ -436,7 +440,7 @@ def make_aqueous_network(
                         # Iversen and Jorgensen (1985) found sulfate reduction up to 60 nmol/cm3/day
                         decomp_network.reaction(name='Sulfate reduction',reactant_pools={'Acetate-':1.0,'SO4--':1.0,'H+':2},
                                 product_pools={'CO2(aq)':2.0,'HS-':1.0},
-                                rate_constant=1e-9,reactiontype='MICROBIAL',activation_energy=Eact,
+                                rate_constant=5e-9,reactiontype='MICROBIAL',activation_energy=Eact_sulfatered,
                                 monod_terms=[decomp_network.monod(species='Acetate-',k=acetate_scale,threshold=1.1e-15),
                                                 decomp_network.monod(species='SO4--',k=sulfate_scale),
                                                 decomp_network.monod(species='H+',k=1e-6)],
@@ -446,7 +450,7 @@ def make_aqueous_network(
                         decomp_network.reaction(name='Sulfide oxidation',stoich='1.0 HS- + 2.0 O2(aq) -> 1.0 SO4-- + 1.0 H+',
                                 rate_constant=1e-8,reactiontype='MICROBIAL',activation_energy=Eact,
                                 monod_terms=[decomp_network.monod(species='O2(aq)',k=O2_scale,threshold=0.0),
-                                                decomp_network.monod(species='HS-',k=sulfate_scale)],
+                                                decomp_network.monod(species='HS-',k=sulfate_scale/10)],
                         )
 
                 ])
@@ -462,7 +466,7 @@ def make_aqueous_network(
                                                         # decomp_network.inhibition(species='H+',k=10**-5.54,type='MONOD'),
                                                         decomp_network.inhibition(species='H+',k=10**-5.54,type='INVERSE_MONOD')
                                                         ],
-                                        rate_constant=1.5e-9,reactiontype='MICROBIAL',activation_energy=Eact,),
+                                        rate_constant=2.5e-9,reactiontype='MICROBIAL',activation_energy=Eact_methane,),
 
                         # King et al 1990 found rates around 9-160 nmol/cm3/hr
                         decomp_network.reaction(name='Methane oxidation',stoich='1.0 CH4(aq) + 2.0 O2(aq) -> 1.0 CO2(aq) + 2.0 H2O',
@@ -481,7 +485,7 @@ def make_aqueous_network(
                                                                 # decomp_network.inhibition(species='NO3-',k=conc_scales['NO3-'],type='MONOD'),
                                                                 # decomp_network.inhibition(species='SO4--',k=conc_scales['SO4--'],type='MONOD')
                                                                 ],
-                                                                rate_constant=1e-8*3*0.32,reactiontype='MICROBIAL',activation_energy=Eact,),
+                                                                rate_constant=2e-8*3*0.32,reactiontype='MICROBIAL',activation_energy=Eact_methane,),
                         
                 ])
 
@@ -522,8 +526,9 @@ def oxygen_demand(txt):
 
 decomp_network_ad=make_network()
 decomp_network_notad=make_network(adfactor_soil3=1.0,adfactor_soil4=1.0)
-decomp_network_O2_ad=make_aqueous_network(calcite=False,Fe=False,DOM_scale=0.1,methane=True)
-decomp_network_O2_notad=make_aqueous_network(adfactor_soil3=1.0,adfactor_soil4=1.0,calcite=False,Fe=False,DOM_scale=1e-3,acetate_scale=1e-3,methane=True)
+decomp_network_O2_ad=make_aqueous_network(calcite=False,Fe=True,DOM_scale=0.1,methane=True,FeS_rate=1e-11,init_FeOxide=0.01,init_FeSulfide=0.0)
+decomp_network_O2_notad=make_aqueous_network(adfactor_soil3=1.0,adfactor_soil4=1.0,calcite=False,Fe=True,
+                                                DOM_scale=1e-3,acetate_scale=1e-3,methane=True,FeS_rate=1e-11,init_FeOxide=0.01,init_FeSulfide=0.0)
 
 decomp_network_arctic_ad=make_aqueous_network(calcite=False,Fe=True,methane=True,sulfate=True,DOM_scale=0.1,init_FeOxide=0.01)
 decomp_network_arctic=make_aqueous_network(calcite=False,Fe=True,methane=True,sulfate=True,adfactor_soil4=1.0,adfactor_soil3=1.0,init_FeOxide=0.01)
@@ -772,7 +777,7 @@ if __name__=='__main__':
                         state=load_state_from_logfile(sys.argv[sys.argv.index('test_solve')+1])
                 else:
                         state=''
-                mobile,aux,miner,msg=test_solve(*str_to_alquimia('ELM_decks/CTC_alquimia_forELM_arcticmethane.in',state),dt=3600)
+                mobile,aux,miner,msg=test_solve(*str_to_alquimia('ELM_decks/CTC_alquimia_forELM_O2consuming.in',state),dt=3600)
                 # NOTE: In cases where it fails to converge at short time steps, sometimes increasing the MAX_RESIDUAL_TOLERANCE fixes it
                 print(aux)
                 print(mobile)
