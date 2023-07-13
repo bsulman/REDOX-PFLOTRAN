@@ -16,7 +16,7 @@ if 'PETSC_PATH' in os.environ:
   petsc_paths.append(os.environ['PETSC_PATH'])
 
 for pth in petsc_paths:
-  if os.path.exists(os.path.join(pth,'lib')):
+  if os.path.exists(os.path.join(pth,'lib','libpetsc.so')):
     petscpath=pth
     print(f'Found petsc library in: {petscpath}')
     break
