@@ -7,12 +7,14 @@ alquimia_include='alquimia/build/include'
 pflotran_dir=os.environ['PFLOTRAN_DIR']
 # pflotran_dir='/Users/b0u/Documents/Models/PFLOTRAN/pflotran-interface/src/pflotran'
 # Should set it up to check that these paths actually work
-petsc_paths=[
-  os.path.join(os.environ['PETSC_DIR'],os.environ['PETSC_ARCH']),
-  os.environ['PETSC_PATH'],
-  os.environ['PETSC_DIR'],
-  os.path.join(os.environ['PETSC_PATH'],os.environ['PETSC_ARCH']),
-]
+petsc_paths=[]
+if 'PETSC_DIR' in os.environ:
+  petsc_paths.append(os.environ['PETSC_DIR'])
+if 'PETSC_DIR' in os.environ and 'PETSC_ARCH' in os.environ:
+  petsc_paths.append(os.path.join(os.environ['PETSC_DIR'],os.environ['PETSC_ARCH']))
+if 'PETSC_PATH' in os.environ:
+  petsc_paths.append(os.environ['PETSC_PATH'])
+
 for pth in petsc_paths:
   if os.path.exists(os.path.join(pth,'lib')):
     petscpath=pth
@@ -23,7 +25,6 @@ else:
 
 petsc_lib=os.path.join(petscpath,'lib')
 petsc_archinclude=os.path.join(petscpath,'include')
-petsc_include=os.path.join(petscpath,'include')
 mpi_include=os.path.join(os.environ['OPENMPI_DIR'],'include')
 ffi_builder.set_source('_alquimia',
     r"""
@@ -35,7 +36,7 @@ ffi_builder.set_source('_alquimia',
     
     """,libraries=['alquimia','pflotranchem','petsc'],
         library_dirs=[alquimia_dir,pflotran_dir,petsc_lib],
-        include_dirs=[petsc_include,petsc_archinclude,mpi_include,alquimia_include],
+        include_dirs=[os.path.join(petscpath,'include'),os.path.join(os.environ['PETSC_DIR'],'include'),petsc_archinclude,mpi_include,alquimia_include],
         extra_link_args=['-Wl,-rpath,alquimia/build/alquimia','-Wl,-rpath,'+petsc_lib],
         )
     
