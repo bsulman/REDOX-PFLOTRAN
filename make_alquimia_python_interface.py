@@ -35,8 +35,8 @@ ffi_builder.set_source('_alquimia',
     #include "alquimia/alquimia_containers.h"
     
     """,libraries=['alquimia','pflotranchem','petsc'],
-        library_dirs=[alquimia_dir,pflotran_dir,petsc_lib],
-        include_dirs=[os.path.join(os.environ['PETSC_DIR'],os.environ['PETSC_ARCH'],'include'),os.path.join(os.environ['PETSC_DIR'],'include'),petsc_archinclude,mpi_include,alquimia_include],
+        library_dirs=[alquimia_dir,pflotran_dir]+[os.path.join(pth,'lib') for pth in petsc_paths],
+        include_dirs=[mpi_include,alquimia_include]+[os.path.join(pth,'include') for pth in petsc_paths],
         extra_link_args=['-Wl,-rpath,alquimia/build/alquimia','-Wl,-rpath,'+petsc_lib],
         )
     
