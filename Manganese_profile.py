@@ -381,7 +381,7 @@ rateconstants={
     'DOM1 Mn+++ reduction':2e-9, #1e-7, # microbial Manganese reduction. 
     # Beth says there should be plenty of papers out there about this but maybe not a good synthesis
     'DOM1 Mn+++ abiotic reduction':1e30, # abiotic Mn reduction. Rate constant is multiplied by [Mn+++]^4*[DOM1] so it needs to be very high
-    'Bacterial Mn++ oxidation':1e-11, # Bacterial Mn++ oxidation. Rate constant 1e-9 estimated from Fig 8 in Tebo et al 2004 (~35 uM over 10 hours)
+    'Bacterial Mn++ oxidation':1e-10, # Bacterial Mn++ oxidation. Rate constant 1e-9 estimated from Fig 8 in Tebo et al 2004 (~35 uM over 10 hours)
     # DOM sorption/desorption
     'DOM desorption':1/(365*24*3600*50), # 1st order rate constant (1/M-s)
     'DOM sorption':1e-10,  # M/(biomass*s)

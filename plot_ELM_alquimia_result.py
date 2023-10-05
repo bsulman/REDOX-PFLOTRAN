@@ -16,7 +16,7 @@ def plot_var(vardata,contourax=None,profileax=None,vmax=None,vmin=None,label=Non
             title=None,axlabel=None,maxdepth=None):
     if contourax is not None:
         vardata.plot(ax=contourax,vmax=vmax,vmin=vmin,cbar_kwargs={'label':label},cmap=cmap)
-        contourax.set(title=title,ylim=(maxdepth,0),xlabel='Time (year)',ylabel='Soil depth (m)')
+        contourax.set(title=title,ylim=(maxdepth,0),xlabel='Time',ylabel='Soil depth (m)')
     if profileax is not None:
         if 'levdcmp' in vardata.dims:
             z=vardata['levdcmp']
@@ -178,16 +178,16 @@ def plot_vars(data,vars,plotname=None,figsize=(4,4),maxdepth=1.5,vmax={},vmin={}
             if profileax is not None:
                 profileax.set_visible(False)
         elif var=='H2OSFC':
-            H2OSFC=data['H2OSFC'].squeeze()
+            H2OSFC=data['H2OSFC'].squeeze()*1e-3
             ZWT=data['ZWT'].squeeze()
             (H2OSFC.where(H2OSFC>0,-ZWT)).plot(ax=contourax)
-            contourax.set(title='Surface water level',ylabel='Water level (mm)',xlabel='Time (year)')
+            contourax.set(title='Water level',ylabel='Water level (m)',xlabel='Time (year)')
             contourax.axhline(0.0,c='k',lw=0.5,ls=':')
             if profileax is not None:
                 profileax.set_visible(False)
         elif var=='H2OSFC_tide':
-            (data[var].squeeze()).plot(ax=contourax)
-            contourax.set(title='Tide water level',ylabel='Water level (mm)',xlabel='Time (year)')
+            (data[var].squeeze()*1e-3).plot(ax=contourax)
+            contourax.set(title='Tide water level',ylabel='Water level (m)',xlabel='Time (year)')
             if profileax is not None:
                 profileax.set_visible(False)
             contourax.axhline(0.0,c='k',lw=0.5,ls=':')

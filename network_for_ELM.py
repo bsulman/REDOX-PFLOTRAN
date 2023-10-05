@@ -149,7 +149,7 @@ def make_aqueous_network(
         # Eact = 5e4 gives Q10 ~ 2
         Eact=5e4,Eact_methane=8e4,Eact_sulfatered=8e4, # PFLOTRAN uses Arrhenius equation, Eact in units of J/mol, T0=25 C: Arr(T[C])=exp(Eact/8.314*(1/298.15-1/(T+273.15)))
         init_FeOxide=0.0,FeS_rate=0.0,init_FeSulfide=0.0,
-        DOM_Fe_content=0.5e-3,
+        DOM_Fe_content=0.5e-3, # May be high, Breteler et al. (1981) found more like 6e-5 in spartina leaf litter which is an order of magnitude lower.
         DOM_sulfur_content = 0.01,
                                 ):
         # CTC decomposition network

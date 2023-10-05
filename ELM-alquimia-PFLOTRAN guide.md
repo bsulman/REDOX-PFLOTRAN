@@ -2,14 +2,13 @@
 
 Benjamin Sulman
 
-_Updated 2022-01-28_
+_Updated 2023-10-05_
 
 ## Quick start guide:
 Set up a directory to store all this stuff:
 
         cd $HOME
         mkdir ELM-alquimia
-        export BASEDIR=$HOME/ELM-alquimia
 
 You can of course organize these codes however you want, as long as you make sure the paths in commands point to the right directories.
 
@@ -48,30 +47,73 @@ You can of course organize these codes however you want, as long as you make sur
             export PETSC_ARCH=openmpi-1.10-gcc-5.3
             export PETSC_PATH=$PETSC_DIR/$PETSC_ARCH
     
-    *	Follow directions at https://github.com/bsulman/REDOX-PFLOTRAN/blob/master/README_INSTALL. This will install and compile PFLOTRAN and alquimia and clone all the python scripts in REDOX-PFLOTRAN
-    
+        Close and reopen your terminal after making these edits so they will take effect.
+
+    * Install PFLOTRAN
+        
+            cd $HOME/ELM-alquimia
+            git clone https://github.com/bsulman/pflotran-elm-interface.git
+            pushd pflotran-elm-interface/src/pflotran
+            git checkout pflotran-elm-interface
+            export PETSC_DIR=/software/user_tools/current/cades-ccsi/petsc-x/openmpi-1.10-gcc-5.3
+            make pflotran pflotran_rxn
+            popd
+
+    * Install python packages using the mamba python package manager
+
+                wget https://github.com/conda-forge/miniforge/releases/latest/download/Miniforge3-Linux-x86_64.sh
+                bash Miniforge3-Linux-x86_64.sh
+
+        You may need to close your terminal and log back in again for this to take effect before running the following commands:
+
+                mamba create --name myconda matplotlib xarray cartopy netcdf4 pandas numpy scipy ipython pygraphviz networkx cftime nc-time-axis openpyxl cffi
+                mamba activate myconda
+                pip install mpi4py
+
+    * Install python scripts for handling alquimia/PFLOTRAN simulations
+
+                git clone --recursive https://github.com/bsulman/REDOX-PFLOTRAN.git
+
+                # Build alquimia interface
+                # Note, this step will fail if environment variables PETSC_DIR and PETSC_ARCH are not correct
+                cd REDOX-PFLOTRAN/alquimia
+                mkdir build
+                cd build
+                export PETSC_DIR=/software/user_tools/current/cades-ccsi/petsc-x/openmpi-1.10-gcc-5.3
+                PETSC_ARCH='' cmake .. \
+                -DCMAKE_INSTALL_PREFIX=. \
+                -DCMAKE_C_COMPILER=$OPENMPI_DIR/bin/mpicc \
+                -DCMAKE_CXX_COMPILER=$OPENMPI_DIR/bin/mpicxx \
+                -DCMAKE_Fortran_COMPILER=$OPENMPI_DIR/bin/mpif90 \
+                -DCMAKE_BUILD_TYPE=Debug \
+                -DXSDK_WITH_PFLOTRAN=ON \
+                -DTPL_PFLOTRAN_LIBRARIES=$PFLOTRAN_DIR/libpflotranchem.a \
+                -DTPL_PFLOTRAN_INCLUDE_DIRS=$PFLOTRAN_DIR \
+                -DCMAKE_Fortran_FLAGS="-DPFLOTRAN_SOMDEC"
+
+                make install
+
+
     *	Install Offline Model Testbed (OLMT) and check out alquimia branch:
 
-            cd $BASEDIR
+            cd $HOME/ELM-alquimia
             git clone https://github.com/dmricciuto/OLMT.git
             cd OLMT
             git checkout bsulman/coastal_main
 
-        Note: Your python installation will need to have the netCDF4 package installed to run OLMT. netCDF4 should be installed with the python version you get on cades (`module load python`) but if you are using an anaconda python environment you may need to install the netCDF4 package.
     
     *	Clone/checkout correct ELM code:
 
-            cd $BASEDIR
-            git clone -b coastal_main_E3SMv2 git@github.com:bsulman/E3SM.git
-            cd E3SM
-            git submodule update --init --recursive
+            cd $HOME/ELM-alquimia
+            git clone -b coastal_main_rebase --recurse-submodules git@github.com:bsulman/E3SM.git
+
 
         Note: To clone the E3SM code, you will need to have a Github account that is connected to an ssh key on the computer you are cloning to. See directions here: https://docs.github.com/en/authentication/connecting-to-github-with-ssh/adding-a-new-ssh-key-to-your-github-account?platform=linux
 
 
 2.	Generate PFLOTRAN input decks:
 
-        cd $BASEDIR/REDOX-PFLOTRAN
+        cd $HOME/ELM-alquimia/REDOX-PFLOTRAN
         mkdir -p ELM_decks
         python network_for_ELM.py
 
@@ -81,17 +123,17 @@ You can of course organize these codes however you want, as long as you make sur
     * `CTC_alquimia_forELM_O2consuming.in`: ELM pools with oxygen consumption, dissolved CO2, DOM, and Fe cycling
     * `CTC_alquimia_forELM_O2consuming_adspinup.in`: ELM pools with oxygen consumption, dissolved CO2, DOM, and Fe cycling with modified rate constants for accelerated decomposition spinup
 
-    The input deck generation uses a set of python scripts for inserting reactions and chemical species into a PFLOTRAN input deck template. The template it uses in this case is `SOMdecomp_template.txt`. The pools and reactions are all specified in the `network_for_ELM.py` script and can be changed by editing the script.
+    The input deck generation uses a set of python scripts for inserting reactions and chemical species into a PFLOTRAN input deck template. The template it uses in this case is `SOMdecomp_template.txt`. The pools and reactions are all specified in the `network_for_ELM.py` script and can be changed by editing that script.
 
     Note: The C:N ratio of DOM is currently hard-coded into the ELM code, and reactions involving DOM are balanced in the input deck so changing either of those may cause N conservation errors and crash the model.
 
-3.	Run simulation with OLMT:
+3.	Run simulation with OLMT. Several example simulations are in marsh_sim_cmds.txt
 
-        export BASEDIR=$HOME/ELM-alquimia
-        cd $BASEDIR/OLMT
+        export $HOME/ELM-alquimia=$HOME/ELM-alquimia
+        cd $HOME/ELM-alquimia/OLMT
         mkdir -p ~/cases
         
-        python site_fullrun.py --site US-PHM --caseidprefix test_alquimia  --nyears_ad_spinup 50 --nyears_final_spinup 50 --tstep 1 --cpl_bypass --machine cades --no_dynroot --spinup_vars --sitegroup Wetland --gswp3 --nyears_transient 51 --nofire --model_root $BASEDIR/E3SM --nopftdyn --ccsm_input /nfs/data/ccsi/proj-shared/E3SM/inputdata --caseroot ~/cases --runroot /lustre/or-scratch/cades-ccsi/$USER/  --mpilib openmpi --pio_version 2 --hist_nhtfrq_trans -24 --hist_mfilt_trans 365 --hist_mfilt_spinup 12 --hist_nhtfrq_spinup 0 --cn_only --alquimia $BASEDIR/REDOX-PFLOTRAN/ELM_decks/CTC_alquimia_forELM_O2consuming.in --alquimia_ad $BASEDIR/REDOX-PFLOTRAN/ELM_decks/CTC_alquimia_forELM_O2consuming_adspinup.in --trans_varlist "TOTVEGC,TOTSOMC,TOTLITC,soil_O2,HR,GPP,NEE,SMINN,SMINN_TO_PLANT,DIC_vr,SIC_vr,H2OSOI,watsat,SOIL1C_vr,SOIL2C_vr,SOIL3C_vr,SOIL4C_vr,LITR1C_vr,LITR2C_vr,LITR3C_vr,DOC_vr,soil_Fe2,soil_FeOxide,soil_pH,soil_sulfate,soil_sulfide,CH4_vr,chem_dt,SOILLIQ,SOILICE,QFLX_ADV,CH4FLUX_ALQUIMIA"
+        python site_fullrun.py --site US-PHM --caseidprefix test_alquimia  --nyears_ad_spinup 100 --nyears_final_spinup 50 --tstep 1 --cpl_bypass --machine cades --no_dynroot --spinup_vars --sitegroup Wetland --gswp3 --nyears_transient 51 --nofire --model_root $HOME/ELM-alquimia/E3SM --nopftdyn --ccsm_input /nfs/data/ccsi/proj-shared/E3SM/inputdata --caseroot ~/cases --runroot /lustre/or-scratch/cades-ccsi/$USER/  --mpilib openmpi --pio_version 2 --hist_nhtfrq_trans -24 --hist_mfilt_trans 365 --hist_mfilt_spinup 12 --hist_nhtfrq_spinup 0 --cn_only --alquimia $HOME/ELM-alquimia/REDOX-PFLOTRAN/ELM_decks/CTC_alquimia_forELM_O2consuming.in --alquimia_ad $HOME/ELM-alquimia/REDOX-PFLOTRAN/ELM_decks/CTC_alquimia_forELM_O2consuming_adspinup.in --trans_varlist "TOTVEGC,TOTSOMC,TOTLITC,soil_O2,HR,GPP,NEE,SMINN,SMINN_TO_PLANT,DIC_vr,SIC_vr,H2OSOI,watsat,SOIL1C_vr,SOIL2C_vr,SOIL3C_vr,SOIL4C_vr,LITR1C_vr,LITR2C_vr,LITR3C_vr,DOC_vr,soil_Fe2,soil_FeOxide,soil_pH,soil_sulfate,soil_sulfide,CH4_vr,chem_dt,SOILLIQ,SOILICE,QFLX_ADV,CH4FLUX_ALQUIMIA"
 
     This should compile ELM and run a simulation with coupler bypass and alquimia turned on, using the expanded reaction network with oxygen, DOM, and iron, going through accelerated spinup, normal spinup, and historical simulations. It will run significantly slower than a normal ELM simulation.
     
@@ -104,17 +146,17 @@ You can of course organize these codes however you want, as long as you make sur
 
 4. Once simulation is finished, plot ten years of output (in this case, 1880-1889). Depends on an anaconda environment "myanaconda3" having been set up following the REDOX-PFLOTRAN installation instructions:
 
-        cd $BASEDIR/REDOX-PFLOTRAN
-        module load anaconda3
-        conda activate myanaconda3
+        cd $HOME/ELM-alquimia/REDOX-PFLOTRAN
+        conda activate myconda
         python plot_ELM_alquimia_result.py /lustre/or-scratch/cades-ccsi/$USER/test_alquimia_US-PHM_ICB20TRCNRDCTCBC/run/test_alquimia*.h0.188?-02-01-00000.nc
 
-    This script plots several figures on the screen so you will need to be logged into CADES with X-11 forwarding turnedon (`ssh -X` ...).
+    This script plots several figures on the screen so you will need to be logged into CADES with X-11 forwarding turned on (`ssh -X` ...).
     Figures:
     * **Carbon time series**: Upper panel shows total vegetation, litter, and soil organic matter pools. Lower panel shows soil surface CO<sub>2</sub> flux which is calculated from the actual equilibration of surface soil CO<sub>2</sub> concentration with the atmosphere boundary condition.
     * **Time step**: This figure shows the actual time step lengths (in seconds) that the chemistry solver used. The chemistry solver starts at the ELM time step (3600 s) and cuts the length in half if the chemistry fails to reach a valid solution or the gas transport seems too fast for the time step length. Shorter chemistry time steps make the model run slower because it is solving the chemistry more times per ELM time step.
     * **Water and oxygen**: Heat map time series (time vs. depth) and profiles of soil water content, oxygen concentration, DOC concentration, and DIC concentration. The solid, dashed, and dotted lines on the heat maps correspond with the individual profiles on the profile plots.
     * **Redox**: Heat map time series and profiles for dissolved Fe(II), Fe oxide minerals, sulfate, sulfide, and pH.
     * **Carbon**: Heat map time series and profiles for total soil carbon, DOC, and methane with depth.
+    * **Hydro**: Surface water depth, porewater salinity, drainage, and lateral flow
 
 

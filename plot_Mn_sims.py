@@ -24,7 +24,7 @@ else:
 # ]
 
 leafC_mass_conv=1.0 # For simulations after I started applying the C to dry mass conversion in the sims. Otherwise it should be 0.4
-molar_volume_birnessite = 251.1700 # Divide by 7 below because birnessite is defined in database as 7 mols of Mn
+molar_volume_birnessite = 251.1700 # cm3/mol Divide by 7 below because birnessite is defined in database as 7 mols of Mn
 Mn_molarmass=54.94        #g/mol
 
 
@@ -160,6 +160,9 @@ anox_baseline_i=0
 anox_baseline=redoxdata['anox_lenscales'][anox_baseline_i].load().item()
 birnrate_baseline_i=2
 
+# Multiplying by surface area of 100 m2/m3 and converting to units of mmol/m3/year
+birnrate_labels=[str(num) for num in (1e-12*2.0**np.arange(-2,8,2)*100*1e3*3600*24*365).round(1)]
+
 f,axs=plt.subplots(num='Figure S1 Saturated time fraction',clear=True)
 O2=redoxdata['Total O2(aq)'].sel(soil_pH=5.0).squeeze()
 satfrac=(O2<O2.max()*0.9).mean(dim='time').T
@@ -182,19 +185,20 @@ total_MAOM=((results_bybirnrate['Total DOM3'].coarsen(time=oneyr,boundary='trim'
 total_SOC=(((results_bybirnrate['Total DOM3']+results_bybirnrate['Total DOM1']+results_bybirnrate['Total DOM2']).\
             coarsen(time=oneyr,boundary='trim').mean()*results_bybirnrate.saturation*results_bybirnrate.Porosity.mean())\
                 *12e-3/1000*100**3*(results_bybirnrate.z_bottom-results_bybirnrate.z_top)/100).sum(dim='depth')
+total_CO2=((results_bybirnrate['Total Tracer'].coarsen(time=oneyr,boundary='trim').mean()*results_bybirnrate.saturation*results_bybirnrate.Porosity.mean())*12e-3/1000*100**3*(results_bybirnrate.z_bottom-results_bybirnrate.z_top)/100).sum(dim='depth')
 
-
-
+# kg C/m2
 total_litter=((results_bybirnrate['Total Sorbed Cellulose']+results_bybirnrate['Total Sorbed Lignin']).load().coarsen(time=oneyr,boundary='trim').mean()*12e-3*(results_bybirnrate.z_bottom-results_bybirnrate.z_top)/100).sum(dim='depth').load()
 
+#z_bottom and z_top are in cm. This calculation results in mol/m2 (first converts mol/L to mol/cm3, then multiplies by depth in cm to get to mol/m2 in each layer)
 totalMn=((results_bybirnrate['Total Mn++']+results_bybirnrate['Total Mn+++']+results_bybirnrate['Total chelated_Mn+++'])/1000*results_bybirnrate.Porosity.mean()*results_bybirnrate.saturation + \
-            (results_bybirnrate['Birnessite2 VF']*7/molar_volume_birnessite) + \
+            (results_bybirnrate['Birnessite2 VF']*7/molar_volume_birnessite) + # mol/cm3 \
             results_bybirnrate['Total Sorbed Mn++']/100**3).load().coarsen(time=oneyr,boundary='trim').mean()*100**2*(results_bybirnrate.z_bottom-results_bybirnrate.z_top)
 birnessite=results_bybirnrate['Birnessite2 VF'].load().coarsen(time=oneyr,boundary='trim').mean()*7/molar_volume_birnessite*100**2*(results_bybirnrate.z_bottom-results_bybirnrate.z_top)
 
-bioavail_Mn=((totalMn-birnessite)*(results_bybirnrate.z_bottom-results_bybirnrate.z_top)/100).sum(dim='depth')
+bioavail_Mn=(totalMn-birnessite).sum(dim='depth')
 
-Figure3,axs=plt.subplots(nrows=3,num='Figure 3',clear=True,figsize=(5,8))
+Figure3,axs=plt.subplots(nrows=4,num='Figure 3',clear=True,figsize=(5,8))
 markers=['o','x','+','^']
 yrs=[39,19,9,29]
 n_birnrate=len(total_litter.birnrate)-1
@@ -203,7 +207,8 @@ norm=matplotlib.colors.LogNorm(vmin=total_litter.birnrate.min(),vmax=total_litte
 for n,t in enumerate(yrs[:1]):
     for birnrate in range(n_birnrate):
         l0=axs[0].plot(bioavail_Mn.isel(time=t,birnrate=birnrate)*1e3,total_litter.isel(time=t,birnrate=birnrate),markers[n],c='k') #=cmap(norm(total_litter.birnrate[birnrate])))#='%1.1f'%(1-t/39))
-        l1=axs[1].plot(bioavail_Mn.isel(time=t,birnrate=birnrate)*1e3,total_MAOM.isel(time=t,birnrate=birnrate),markers[n],c='k') #=cmap(norm(total_litter.birnrate[birnrate])))#,c='%1.1f'%(1-t/39))
+        l1=axs[3].plot(bioavail_Mn.isel(time=t,birnrate=birnrate)*1e3,total_MAOM.isel(time=t,birnrate=birnrate),markers[n],c='k') #=cmap(norm(total_litter.birnrate[birnrate])))#,c='%1.1f'%(1-t/39))
+        l1=axs[1].plot(bioavail_Mn.isel(time=t,birnrate=birnrate)*1e3,(total_CO2.isel(time=t,birnrate=birnrate)-total_CO2.isel(time=t-1,birnrate=birnrate))*1000,markers[n],c='k') #=cmap(norm(total_litter.birnrate[birnrate])))#,c='%1.1f'%(1-t/39))
         l2=axs[2].plot(bioavail_Mn.isel(time=t,birnrate=birnrate)*1e3,(total_SOC+total_litter).isel(time=t,birnrate=birnrate),markers[n],c='k') #=cmap(norm(total_litter.birnrate[birnrate])))#,c='%1.1f'%(1-t/39))
         if birnrate==n_birnrate-1:
             l0[0].set_label(f'Year {t+1}')
@@ -211,7 +216,8 @@ for n,t in enumerate(yrs[:1]):
 print('litter stock max = %1.2f, min = %1.2f'%(total_litter.isel(time=t,birnrate=birnrate_baseline_i).max(),total_litter.isel(time=t,birnrate=birnrate_baseline_i).min()))
 
 axs[0].set(title='Particulate Organic C',xlabel='Bioavailable soil Mn (mmol m$^{-2}$)',ylabel='C stock (kg C m$^{-2}$)')
-axs[1].set(title='Mineral-associated Organic C',xlabel='Bioavailable soil Mn (mmol m$^{-2}$)',ylabel='C stock (kg C m$^{-2}$)')
+axs[3].set(title='Mineral-associated Organic C',xlabel='Bioavailable soil Mn (mmol m$^{-2}$)',ylabel='C stock (kg C m$^{-2}$)')
+axs[1].set(title='Annual CO$_2$ production',xlabel='Bioavailable soil Mn (mmol m$^{-2}$)',ylabel='C flux (g C m$^{-2}$ year$^{-1}$)')
 axs[2].set(title='Total soil and forest floor C',xlabel='Bioavailable soil Mn (mmol m$^{-2}$)',ylabel='C stock (kg C m$^{-2}$)')
 # axs[0].legend()
 
@@ -250,7 +256,7 @@ for num in range(4):
             d['Total Sorbed Mn++']/100**3).squeeze().load().coarsen(time=oneyr,boundary='trim').mean()*100**2*(d.z_bottom-d.z_top)
     birnessite=d['Birnessite2 VF'].squeeze().load().coarsen(time=oneyr,boundary='trim').mean()*7/molar_volume_birnessite*100**2*(d.z_bottom-d.z_top)
 
-    bioavail_Mn=((totalMn-birnessite)*(d.z_bottom-d.z_top)/100).sum(dim='depth').squeeze()
+    bioavail_Mn=(totalMn-birnessite).sum(dim='depth').squeeze()
 
 
     for t in [9,19,29,39]:
@@ -283,7 +289,7 @@ totalMn=((results_bybirnrate['Total Mn++']+results_bybirnrate['Total Mn+++']+res
             results_bybirnrate['Total Sorbed Mn++']/100**3).load().coarsen(time=oneyr,boundary='trim').mean()*100**2*(results_bybirnrate.z_bottom-results_bybirnrate.z_top)
 birnessite=results_bybirnrate['Birnessite2 VF'].load().coarsen(time=oneyr,boundary='trim').mean()*7/molar_volume_birnessite*100**2*(results_bybirnrate.z_bottom-results_bybirnrate.z_top)
 
-bioavail_Mn=((totalMn-birnessite)*(results_bybirnrate.z_bottom-results_bybirnrate.z_top)/100).sum(dim='depth')
+bioavail_Mn=(totalMn-birnessite).sum(dim='depth')
 
 for ph in range(len(controldata['soil_pH'])):
     for birnrate in range(len(controldata['birnrate'])):
@@ -297,8 +303,8 @@ for ph in range(len(controldata['soil_pH'])):
         if (row)==0:
             axs[row,ph].set_title('pH = %1.1f'%controldata['soil_pH'][ph].load().item(),pad=10,fontsize='large',fontweight='bold')
         if ph==0:
-            axs[row,ph].text(-0.6,0.5,f'Birnessite dissolution\nscale = {round(controldata["birnrate"][birnrate].load().item(),2)}',
-            rotation=90,va='center',transform=axs[row,ph].transAxes,fontsize='large',fontweight='bold')
+            axs[row,ph].text(-0.55,0.5,'Birnessite\nrate scale = %s\n(mmol Mn m$^{-3}$ y$^{-1}$)'%birnrate_labels[birnrate],
+            rotation=90,va='center',ha='center',transform=axs[row,ph].transAxes,fontsize='large',fontweight='bold')
 
         axs[row,ph].set_ylabel('Depth (cm)')
         axs[row,ph].tick_params(labelleft=True,labelbottom=True)
@@ -388,8 +394,8 @@ for ph in range(len(controldata['soil_pH'])):
         if row==0:
             axs[row,ph].set_title('pH = %1.1f'%controldata['soil_pH'][ph].load().item(),pad=10,fontsize='large',fontweight='bold')
         if ph==0:
-            axs[row,ph].text(-0.6,0.5,f'Birnessite dissolution\nscale = {round(controldata["birnrate"][birnrate].load().item(),2)}',
-                rotation=90,va='center',transform=axs[row,ph].transAxes,fontsize='large',fontweight='bold')
+            axs[row,ph].text(-0.55,0.5,'Birnessite\nrate scale = %s \n(mmol Mn m$^{-3}$ y$^{-1}$)'%birnrate_labels[birnrate],
+                rotation=90,va='center',ha='center',transform=axs[row,ph].transAxes,fontsize='large',fontweight='bold')
 
         axs[row,ph].set_ylabel('Depth (cm)')
         axs[row,ph].tick_params(labelleft=True,labelbottom=True)
@@ -411,7 +417,7 @@ f,axs=plt.subplots(ncols=2,num='Mn leaching',figsize=(8,4),clear=True)
         /(totalMn+rootuptake).isel(time=0).sum(dim='depth')*100/4).T.plot(ax=axs[0],vmin=0,
                                             cmap='Blues'#,cbar_kwargs={'label':'Cumulative Mn leached (%/decade)'}
                                             )
-axs[0].set(title='Cumulative Mn leached (Soil chem)',xlabel='Soil pH',ylabel='Birnessite dissolution rate scale',yscale='log',ylim=(0.2,88))
+axs[0].set(title='Cumulative Mn leached (Soil chem)',xlabel='Soil pH',ylabel='Birnessite dissolution rate scale\n(mmol Mn m$^{-3}$ soil year$^{-1}$)',yscale='log',ylim=(0.2,88))
 
 axs[1].plot(satfrac.mean(dim='depth'),(((totalMn_redox+rootuptake_redox).isel(time=0).sum(dim='depth')
         -(totalMn_redox+rootuptake_redox).isel(time=39).sum(dim='depth'))
@@ -552,35 +558,115 @@ for num in range(axs.size):
 save_one_fig(f)
 
 
+totalMn=((alldata['Total Mn++']+alldata['Total Mn+++']+alldata['Total chelated_Mn+++'])/1000*alldata.Porosity.mean()*alldata.saturation + \
+            (alldata['Birnessite2 VF']*7/molar_volume_birnessite) + \
+            alldata['Total Sorbed Mn++']/100**3).load().coarsen(time=oneyr,boundary='trim').mean()*100**2*(alldata.z_bottom-alldata.z_top)
+birnessite=alldata['Birnessite2 VF'].load().coarsen(time=oneyr,boundary='trim').mean()*7/molar_volume_birnessite*100**2*(alldata.z_bottom-alldata.z_top)
+bioavail_Mn=(totalMn-birnessite).sum(dim='depth')
+
+f,a=plt.subplots(ncols=3,num='Warming by N dep',clear=True,figsize=(12.5,4))
+br=3
+maxval=total_litter_all.squeeze().isel(birnrate=br,time=40).max().compute()
+minval=total_litter_all.squeeze().isel(birnrate=br,time=40).min().compute()
+levels=np.arange(np.round(minval,1)-0.05,np.round(maxval,1)+0.05,0.05)
+
+a[0].contourf(bioavail_Mn.isel(birnrate=br,Ndep=0,time=40,warming=0).squeeze()*1e3,alldata['warming'],total_litter_all.squeeze().isel(birnrate=br,Ndep=0,time=40).T,levels=levels)
+a[1].contourf(bioavail_Mn.isel(birnrate=br,Ndep=1,time=40,warming=0).squeeze()*1e3,alldata['warming'],total_litter_all.squeeze().isel(birnrate=br,Ndep=1,time=40).T,levels=levels)
+h=a[2].contourf(bioavail_Mn.isel(birnrate=br,Ndep=2,time=40,warming=0).squeeze()*1e3,alldata['warming'],total_litter_all.squeeze().isel(birnrate=br,Ndep=2,time=40).T,levels=levels)
+cb=f.colorbar(ax=a[2],mappable=h)
+cb.set_label('Forest floor C stock (kg C m$^{-2}$)')
+a[0].set(xlabel='Mn bioavailability (mmol m$^{-2}$)',ylabel='Warming (C)',title='N dep = 0 kg N ha$^{-1}$ year$^{-1}$')
+a[1].set(xlabel='Mn bioavailability (mmol m$^{-2}$)',ylabel='Warming (C)',title='N dep = 50 kg N ha$^{-1}$ year$^{-1}$')
+a[2].set(xlabel='Mn bioavailability (mmol m$^{-2}$)',ylabel='Warming (C)',title='N dep = 150 kg N ha$^{-1}$ year$^{-1}$')
+
+save_one_fig(f)
+
+f,a=plt.subplots(ncols=3,num='N dep by Warming',clear=True,figsize=(12.5,4))
+maxval=total_litter_all.squeeze().isel(birnrate=2,time=40).max().compute()
+minval=total_litter_all.squeeze().isel(birnrate=2,time=40).min().compute()
+levels=np.arange(np.round(minval,1)-0.05,np.round(maxval,1)+0.05,0.05)
+
+a[0].contourf(bioavail_Mn.isel(birnrate=2,Ndep=0,time=40,warming=0).squeeze()*1e3,alldata['Ndep'],total_litter_all.squeeze().isel(birnrate=2,warming=0,time=40).T,levels=levels)
+a[1].contourf(bioavail_Mn.isel(birnrate=2,Ndep=0,time=40,warming=1).squeeze()*1e3,alldata['Ndep'],total_litter_all.squeeze().isel(birnrate=2,warming=1,time=40).T,levels=levels)
+h=a[2].contourf(bioavail_Mn.isel(birnrate=2,Ndep=0,time=40,warming=2).squeeze()*1e3,alldata['Ndep'],total_litter_all.squeeze().isel(birnrate=2,warming=2,time=40).T,levels=levels)
+cb=f.colorbar(ax=a[2],mappable=h)
+cb.set_label('Forest floor C stock (kg C m$^{-2}$)')
+a[0].set(xlabel='Mn bioavailability (mmol m$^{-2}$)',ylabel='N dep (kg N ha$^{-1}$ year$^{-1}$)',title='Warming = 0 C')
+a[1].set(xlabel='Mn bioavailability (mmol m$^{-2}$)',ylabel='N dep (kg N ha$^{-1}$ year$^{-1}$)',title='Warming = 2 C')
+a[2].set(xlabel='Mn bioavailability (mmol m$^{-2}$)',ylabel='N dep (kg N ha$^{-1}$ year$^{-1}$)',title='Warming = 5 C')
+
+save_one_fig(f)
+
+f,a=plt.subplots(ncols=2,nrows=3,num='Mn bioavail by treatment',clear=True,figsize=(11,4))
+ph=1
+brs=[2,4]
+cm=plt.get_cmap('Reds')
+for br in range(2):
+    # h=a[0,br].contourf(bioavail_Mn['time']/365,alldata['warming'],bioavail_Mn.isel(birnrate=brs[br],Ndep=0,soil_pH=ph).squeeze())
+    # cb=f.colorbar(h,ax=a[0,br])
+    # cb.set_label('Bioavailable Mn (mmol m$^{-2}$)')
+    a[0,br].plot(bioavail_Mn['time']/365,bioavail_Mn.isel(birnrate=brs[br],Ndep=0,soil_pH=ph,warming=0).squeeze(),c=cm(0.25))
+    a[0,br].plot(bioavail_Mn['time']/365,bioavail_Mn.isel(birnrate=brs[br],Ndep=0,soil_pH=ph,warming=1).squeeze(),c=cm(0.50))
+    a[0,br].plot(bioavail_Mn['time']/365,bioavail_Mn.isel(birnrate=brs[br],Ndep=0,soil_pH=ph,warming=2).squeeze(),c=cm(0.75))
+    a[0,br].set(ylabel='Warming (C)',xlabel='Time (years)',title='Bioavailable Mn by treatment')
+a[0,0].set_title('Low birnessite dissolution\nMn bioavailability')
+a[0,1].set_title('High birnessite dissolution\nMn bioavailability')
+
+minval=min(total_litter_all.isel(birnrate=2,Ndep=0,soil_pH=ph).squeeze().min().compute(),total_litter_all.isel(birnrate=3,Ndep=0,soil_pH=ph).squeeze().min().compute())
+maxval=max(total_litter_all.isel(birnrate=2,Ndep=0,soil_pH=ph).squeeze().max().compute(),total_litter_all.isel(birnrate=3,Ndep=0,soil_pH=ph).squeeze().max().compute())
+for br in range(2):
+    # h=a[2,br].contourf(total_litter_all['time'],alldata['warming'],total_litter_all.isel(birnrate=brs[br],Ndep=0,soil_pH=ph).squeeze(),levels=np.linspace(minval,maxval,10))
+    # cb=f.colorbar(h,ax=a[2,br])
+    # cb.set_label('Particulate organic matter (kg C m$^{-2}$)')
+    a[2,br].plot(bioavail_Mn['time']/365,total_litter_all.isel(birnrate=brs[br],Ndep=0,soil_pH=ph,warming=0).squeeze(),c=cm(0.25))
+    a[2,br].plot(bioavail_Mn['time']/365,total_litter_all.isel(birnrate=brs[br],Ndep=0,soil_pH=ph,warming=1).squeeze(),c=cm(0.50))
+    a[2,br].plot(bioavail_Mn['time']/365,total_litter_all.isel(birnrate=brs[br],Ndep=0,soil_pH=ph,warming=2).squeeze(),c=cm(0.75))
+    a[2,br].set(ylabel='Warming (C)',xlabel='Time (years)',title='Particulate organic matter by treatment')
+
+minval=min(alldata['litter_Mn'].isel(birnrate=2,Ndep=0,soil_pH=ph).squeeze().min().compute(),alldata['litter_Mn'].isel(birnrate=3,Ndep=0,soil_pH=ph).squeeze().min().compute())
+maxval=max(alldata['litter_Mn'].isel(birnrate=2,Ndep=0,soil_pH=ph).squeeze().max().compute(),alldata['litter_Mn'].isel(birnrate=3,Ndep=0,soil_pH=ph).squeeze().max().compute())
+for br in range(2):
+    # h=a[1,br].contourf(alldata['litter_year'],alldata['warming'],alldata['litter_Mn'].isel(birnrate=brs[br],Ndep=0,soil_pH=ph).squeeze())
+    # cb=f.colorbar(h,ax=a[1,br])
+    # cb.set_label('Litter Mn concentration (mmol kg$^{-1}$)')
+    a[1,br].plot(alldata['litter_year'],alldata['litter_Mn'].isel(birnrate=brs[br],Ndep=0,soil_pH=ph,warming=0).squeeze(),c=cm(0.25))
+    a[1,br].plot(alldata['litter_year'],alldata['litter_Mn'].isel(birnrate=brs[br],Ndep=0,soil_pH=ph,warming=1).squeeze(),c=cm(0.50))
+    a[1,br].plot(alldata['litter_year'],alldata['litter_Mn'].isel(birnrate=brs[br],Ndep=0,soil_pH=ph,warming=2).squeeze(),c=cm(0.75))
+    a[1,br].set(ylabel='Warming (C)',xlabel='Time (years)',title='Litter Mn concentration by treatment')
+
+
+save_one_fig(f)
+
 total_litter=total_litter_all.sel(Ndep=0).squeeze()
+#z_bottom and z_top are in cm. This calculation results in mol/m2 (first converts mol/L to mol/cm3, then multiplies by depth in cm to get to mol/m2 in each layer)
 totalMn=((data_warmings['Total Mn++']+data_warmings['Total Mn+++']+data_warmings['Total chelated_Mn+++'])/1000*data_warmings.Porosity.mean()*data_warmings.saturation + \
             (data_warmings['Birnessite2 VF']*7/molar_volume_birnessite) + \
             data_warmings['Total Sorbed Mn++']/100**3).load().coarsen(time=oneyr,boundary='trim').mean()*100**2*(data_warmings.z_bottom-data_warmings.z_top)
 birnessite=data_warmings['Birnessite2 VF'].load().coarsen(time=oneyr,boundary='trim').mean()*7/molar_volume_birnessite*100**2*(data_warmings.z_bottom-data_warmings.z_top)
-bioavail_Mn=((totalMn-birnessite)*(data_warmings.z_bottom-data_warmings.z_top)/100).sum(dim='depth')
+bioavail_Mn=(totalMn-birnessite).sum(dim='depth')
 
-Figure2,axs=plt.subplots(nrows=3,ncols=1,num='Figure 2 (warming)',clear=True,figsize=(4,7.5))
+Figure2,axs=plt.subplots(nrows=2,ncols=1,num='Figure 2',clear=True,figsize=(4,7.5))
 
 cmap=plt.get_cmap('Reds')
 
-axs[0].plot(bioavail_Mn.isel(warming=0,time=39).to_masked_array().ravel(),total_litter.isel(warming=0,time=39).to_masked_array().ravel(),'o',c=cmap(0.25),label='+ O\u00B0C')
-axs[0].plot(bioavail_Mn.isel(warming=1,time=39).to_masked_array().ravel(),total_litter.isel(warming=1,time=39).to_masked_array().ravel(),'o',c=cmap(0.5),label='+ 2\u00B0C')
-axs[0].plot(bioavail_Mn.isel(warming=2,time=39).to_masked_array().ravel(),total_litter.isel(warming=2,time=39).to_masked_array().ravel(),'o',c=cmap(0.75),label='+ 5\u00B0C')
+# axs[0].plot(bioavail_Mn.isel(warming=0,time=39).to_masked_array().ravel()*1e3,total_litter.isel(warming=0,time=39).to_masked_array().ravel(),'o',c='k',label='+ O\u00B0C')
+# axs[0].plot(bioavail_Mn.isel(warming=1,time=39).to_masked_array().ravel(),total_litter.isel(warming=1,time=39).to_masked_array().ravel(),'o',c=cmap(0.5),label='+ 2\u00B0C')
+# axs[0].plot(bioavail_Mn.isel(warming=2,time=39).to_masked_array().ravel(),total_litter.isel(warming=2,time=39).to_masked_array().ravel(),'o',c=cmap(0.75),label='+ 5\u00B0C')
 
-axs[0].legend()
+# axs[0].legend()
 
-axs[1].plot(bioavail_Mn.isel(warming=0,time=39).to_masked_array().ravel(),data_warmings['litter_Mn'].isel(warming=0,litter_year=39).to_masked_array().ravel(),'o',c=cmap(0.25),label='+ O\u00B0C')
-axs[1].plot(bioavail_Mn.isel(warming=1,time=39).to_masked_array().ravel(),data_warmings['litter_Mn'].isel(warming=1,litter_year=39).to_masked_array().ravel(),'o',c=cmap(0.5),label='+ 2\u00B0C')
-axs[1].plot(bioavail_Mn.isel(warming=2,time=39).to_masked_array().ravel(),data_warmings['litter_Mn'].isel(warming=2,litter_year=39).to_masked_array().ravel(),'o',c=cmap(0.75),label='+ 5\u00B0C')
+axs[0].plot(bioavail_Mn.isel(warming=0,time=39).to_masked_array().ravel()*1e3,data_warmings['litter_Mn'].isel(warming=0,litter_year=39).to_masked_array().ravel(),'o',c='k',label='+ O\u00B0C')
+# axs[1].plot(bioavail_Mn.isel(warming=1,time=39).to_masked_array().ravel(),data_warmings['litter_Mn'].isel(warming=1,litter_year=39).to_masked_array().ravel(),'o',c=cmap(0.5),label='+ 2\u00B0C')
+# axs[1].plot(bioavail_Mn.isel(warming=2,time=39).to_masked_array().ravel(),data_warmings['litter_Mn'].isel(warming=2,litter_year=39).to_masked_array().ravel(),'o',c=cmap(0.75),label='+ 5\u00B0C')
 
-axs[2].plot(bioavail_Mn.isel(warming=0,time=39).to_masked_array().ravel(),(totalMn-birnessite).isel(depth=0,warming=0,time=39).to_masked_array().ravel(),'o',c=cmap(0.25),label='+ O\u00B0C')
-axs[2].plot(bioavail_Mn.isel(warming=1,time=39).to_masked_array().ravel(),(totalMn-birnessite).isel(depth=0,warming=1,time=39).to_masked_array().ravel(),'o',c=cmap(0.5),label='+ 2\u00B0C')
-axs[2].plot(bioavail_Mn.isel(warming=2,time=39).to_masked_array().ravel(),(totalMn-birnessite).isel(depth=0,warming=2,time=39).to_masked_array().ravel(),'o',c=cmap(0.75),label='+ 5\u00B0C')
+axs[1].plot(bioavail_Mn.isel(warming=0,time=39).to_masked_array().ravel()*1e3,(totalMn-birnessite).isel(depth=0,warming=0,time=39).to_masked_array().ravel()*1e3,'o',c='k',label='+ O\u00B0C')
+# axs[2].plot(bioavail_Mn.isel(warming=1,time=39).to_masked_array().ravel(),(totalMn-birnessite).isel(depth=0,warming=1,time=39).to_masked_array().ravel(),'o',c=cmap(0.5),label='+ 2\u00B0C')
+# axs[2].plot(bioavail_Mn.isel(warming=2,time=39).to_masked_array().ravel(),(totalMn-birnessite).isel(depth=0,warming=2,time=39).to_masked_array().ravel(),'o',c=cmap(0.75),label='+ 5\u00B0C')
 
 
-axs[0].set(title='Forest floor C stock',xlabel='Bioavailable soil Mn (mmol m$^{-2}$)',ylabel='C stock (kg C m$^{-2}$)')
-axs[1].set(title='Leaf litter Mn concentration',xlabel='Bioavailable soil Mn (mmol m$^{-2}$)',ylabel='Mn concentration (mmol kg$^{-1}$)')
-axs[2].set(title='Forest floor bioavailable Mn',xlabel='Bioavailable soil Mn (mmol m$^{-2}$)',ylabel='Bioavailable Mn (mmol m$^{-2}$)')
+# axs[0].set(title='Forest floor C stock',xlabel='Bioavailable soil Mn (mmol m$^{-2}$)',ylabel='C stock (kg C m$^{-2}$)')
+axs[0].set(title='Leaf litter Mn concentration',xlabel='Bioavailable soil Mn (mmol m$^{-2}$)',ylabel='Mn concentration (mmol kg$^{-1}$)')
+axs[1].set(title='Forest floor bioavailable Mn',xlabel='Bioavailable soil Mn (mmol m$^{-2}$)',ylabel='Bioavailable Mn (mmol m$^{-2}$)')
 
 for num in range(axs.size):
     letter_label(axs.ravel()[num],num,x=0,title=True)
@@ -594,65 +680,91 @@ totalMn=((alldata['Total Mn++']+alldata['Total Mn+++']+alldata['Total chelated_M
             (alldata['Birnessite2 VF']*7/molar_volume_birnessite) + \
             alldata['Total Sorbed Mn++']/100**3).load().coarsen(time=oneyr,boundary='trim').mean()*100**2*(alldata.z_bottom-alldata.z_top)
 birnessite=alldata['Birnessite2 VF'].load().coarsen(time=oneyr,boundary='trim').mean()*7/molar_volume_birnessite*100**2*(alldata.z_bottom-alldata.z_top)
-bioavail_Mn=((totalMn-birnessite)*(alldata.z_bottom-alldata.z_top)/100).sum(dim='depth').squeeze()
+bioavail_Mn=(totalMn-birnessite).sum(dim='depth').squeeze()
 
-f,axs=plt.subplots(nrows=3,ncols=1,num='Figure 5 Ndep contours',clear=True,figsize=(5,7.5))
+f,axs=plt.subplots(nrows=3,ncols=2,num='Figure 5 treatment bars',clear=True,figsize=(6.5,7.5))
 cm=plt.get_cmap('Reds')
-# h=axs[0,0].contourf(total_litter['soil_pH'],satfrac.mean(dim='depth'),total_litter.isel(warming=0,Ndep=1,time=39).T,levels=linspace(0,2.0,21))
-# h=axs[0,0].contourf(total_litter['soil_pH'],satfrac.mean(dim='depth'),
-#         (total_litter.isel(warming=0,Ndep=1,time=39).T-total_litter.isel(warming=0,Ndep=0,time=39).T),
-#         levels=levs,cmap=cm)
-# h1=axs[0,1].contourf(total_litter['soil_pH'],satfrac.mean(dim='depth'),
-#         (total_litter.isel(warming=1,Ndep=1,time=39).T-total_litter.isel(warming=0,Ndep=0,time=39).T),
-#         levels=levs,cmap=cm)
-# h2=axs[0,2].contourf(total_litter['soil_pH'],satfrac.mean(dim='depth'),
-#         (total_litter.isel(warming=2,Ndep=1,time=39).T-total_litter.isel(warming=0,Ndep=0,time=39).T),
-#         levels=levs,cmap=cm)
+cm_N=plt.get_cmap('Blues')
 
-axs[0].plot(bioavail_Mn.isel(warming=0,time=39,Ndep=0).to_masked_array().ravel(),total_litter.isel(warming=0,time=39,Ndep=0).to_masked_array().ravel(),'o',c=cmap(0.25),label='Ndep = 0')
-# axs[0].plot(bioavail_Mn.isel(warming=1,time=39,Ndep=0).to_masked_array().ravel(),total_litter.isel(warming=1,time=39,Ndep=0).to_masked_array().ravel(),'o',c=cmap(0.5),label='+ 2\u00B0C, Ndep = 0')
-# axs[0].plot(bioavail_Mn.isel(warming=2,time=39,Ndep=0).to_masked_array().ravel(),total_litter.isel(warming=2,time=39,Ndep=0).to_masked_array().ravel(),'o',c=cmap(0.75),label='+ 5\u00B0C, Ndep = 0')
+yr=39
 
+axs[2,0].plot(alldata['litter_Mn'].isel(warming=0,litter_year=yr,Ndep=0,soil_pH=1).squeeze().to_masked_array(),total_litter.isel(warming=0,time=yr,Ndep=0,soil_pH=1).to_masked_array().ravel(),'-o',lw=0.5,c=cm(0.25),label='+ 0\u00B0C')
+axs[2,0].plot(alldata['litter_Mn'].isel(warming=1,litter_year=yr,Ndep=0,soil_pH=1).squeeze().to_masked_array(),total_litter.isel(warming=1,time=yr,Ndep=0,soil_pH=1).to_masked_array().ravel(),'-o',lw=0.5,c=cm(0.5),label='+ 2\u00B0C')
+axs[2,0].plot(alldata['litter_Mn'].isel(warming=2,litter_year=yr,Ndep=0,soil_pH=1).squeeze().to_masked_array(),total_litter.isel(warming=2,time=yr,Ndep=0,soil_pH=1).to_masked_array().ravel(),'-o',lw=0.5,c=cm(0.75),label='+ 5\u00B0C')
+for num in range(5):
+    axs[2,0].plot(alldata['litter_Mn'].isel(birnrate=num,litter_year=yr,Ndep=0,soil_pH=1).squeeze().to_masked_array(),total_litter.isel(birnrate=num,time=yr,Ndep=0,soil_pH=1).to_masked_array().ravel(),':',c=cm(0.5))
 
-axs[0].plot(bioavail_Mn.isel(warming=0,time=39,Ndep=1).to_masked_array().ravel(),total_litter.isel(warming=0,time=39,Ndep=1).to_masked_array().ravel(),'^',c=cmap(0.5),label='Ndep = 50')
-# axs[0].plot(bioavail_Mn.isel(warming=1,time=39,Ndep=1).to_masked_array().ravel(),total_litter.isel(warming=1,time=39,Ndep=1).to_masked_array().ravel(),'^',c=cmap(0.5),label='+ 2\u00B0C, Ndep = 50')
-# axs[0].plot(bioavail_Mn.isel(warming=2,time=39,Ndep=1).to_masked_array().ravel(),total_litter.isel(warming=2,time=39,Ndep=1).to_masked_array().ravel(),'^',c=cmap(0.75),label='+ 5\u00B0C, Ndep = 50')
-
-axs[0].plot(bioavail_Mn.isel(warming=0,time=39,Ndep=2).to_masked_array().ravel(),total_litter.isel(warming=0,time=39,Ndep=2).to_masked_array().ravel(),'s',c=cmap(0.75),label='Ndep = 150')
-# axs[0].plot(bioavail_Mn.isel(warming=1,time=39,Ndep=2).to_masked_array().ravel(),total_litter.isel(warming=1,time=39,Ndep=2).to_masked_array().ravel(),'s',c=cmap(0.5),label='+ 2\u00B0C, Ndep = 150')
-# axs[0].plot(bioavail_Mn.isel(warming=2,time=39,Ndep=2).to_masked_array().ravel(),total_litter.isel(warming=2,time=39,Ndep=2).to_masked_array().ravel(),'s',c=cmap(0.75),label='+ 5\u00B0C, Ndep = 150')
+axs[2,1].plot(alldata['litter_Mn'].isel(warming=0,litter_year=yr,Ndep=0,soil_pH=1).squeeze().to_masked_array(),total_litter.isel(warming=0,time=yr,Ndep=0,soil_pH=1).to_masked_array().ravel(),'-o',lw=0.5,c=cm_N(0.25),label='Ndep = 0')
+axs[2,1].plot(alldata['litter_Mn'].isel(warming=0,litter_year=yr,Ndep=1,soil_pH=1).squeeze().to_masked_array(),total_litter.isel(warming=0,time=yr,Ndep=1,soil_pH=1).to_masked_array().ravel(),'-o',lw=0.5,c=cm_N(0.5),label='Ndep = 50')
+axs[2,1].plot(alldata['litter_Mn'].isel(warming=0,litter_year=yr,Ndep=2,soil_pH=1).squeeze().to_masked_array(),total_litter.isel(warming=0,time=yr,Ndep=2,soil_pH=1).to_masked_array().ravel(),'-o',lw=0.5,c=cm_N(0.75),label='Ndep = 150')
+for num in range(5):
+    axs[2,1].plot(alldata['litter_Mn'].isel(birnrate=num,warming=0,litter_year=yr,soil_pH=1).squeeze().to_masked_array(),total_litter.isel(birnrate=num,time=yr,warming=0,soil_pH=1).to_masked_array().ravel(),':',c=cm_N(0.5))
 
 
-axs[0].legend()
+# axs[1,1].bar(np.arange(5),total_litter.isel(warming=0,time=yr,Ndep=0,soil_pH=1).to_masked_array(),color=cm(0.25),width=0.25,label='+ 0\u00B0C')
+# axs[1,1].bar(np.arange(5)+0.25,total_litter.isel(warming=1,time=yr,Ndep=0,soil_pH=1).to_masked_array(),color=cm(0.5),width=0.25,label='+ 0\u00B0C')
+# axs[1,1].bar(np.arange(5)+0.5,total_litter.isel(warming=2,time=yr,Ndep=0,soil_pH=1).to_masked_array(),color=cm(0.75),width=0.25,label='+ 5\u00B0C')
 
-axs[1].plot(bioavail_Mn.isel(warming=0,Ndep=0,time=39).to_masked_array().ravel(),alldata['litter_Mn'].isel(warming=0,Ndep=0,litter_year=39).to_masked_array().ravel(),'o',c=cmap(0.25),label='+ O\u00B0C')
-# axs[1].plot(bioavail_Mn.isel(warming=1,Ndep=0,time=39).to_masked_array().ravel(),alldata['litter_Mn'].isel(warming=1,Ndep=0,litter_year=39).to_masked_array().ravel(),'o',c=cmap(0.5),label='+ 2\u00B0C')
-# axs[1].plot(bioavail_Mn.isel(warming=2,Ndep=0,time=39).to_masked_array().ravel(),alldata['litter_Mn'].isel(warming=2,Ndep=0,litter_year=39).to_masked_array().ravel(),'o',c=cmap(0.75),label='+ 5\u00B0C')
+# axs[1,0].bar(np.arange(5),total_litter.isel(warming=0,time=yr,Ndep=0,soil_pH=1).to_masked_array(),color=cm_N(0.25),width=0.25,label='Ndep = 0')
+# axs[1,0].bar(np.arange(5)+0.25,total_litter.isel(warming=0,time=yr,Ndep=1,soil_pH=1).to_masked_array(),color=cm_N(0.5),width=0.25,label='Ndep = 50')
+# axs[1,0].bar(np.arange(5)+0.5,total_litter.isel(warming=0,time=yr,Ndep=2,soil_pH=1).to_masked_array(),color=cm_N(0.75),width=0.25,label='Ndep = 150')
 
-axs[1].plot(bioavail_Mn.isel(warming=0,Ndep=1,time=39).to_masked_array().ravel(),alldata['litter_Mn'].isel(warming=0,Ndep=1,litter_year=39).to_masked_array().ravel(),'^',c=cmap(0.5),label='+ O\u00B0C')
+
+
+axs[1,0].bar(np.arange(5),alldata['litter_Mn'].isel(warming=0,litter_year=yr,Ndep=0,soil_pH=1).squeeze().to_masked_array(),color=cm(0.25),width=0.25,label='+ 0\u00B0C')
+axs[1,0].bar(np.arange(5)+0.25,alldata['litter_Mn'].isel(warming=1,litter_year=yr,Ndep=0,soil_pH=1).squeeze().to_masked_array(),color=cm(0.5),width=0.25,label='+ 2\u00B0C')
+axs[1,0].bar(np.arange(5)+0.5,alldata['litter_Mn'].isel(warming=2,litter_year=yr,Ndep=0,soil_pH=1).squeeze().to_masked_array(),color=cm(0.75),width=0.25,label='+ 5\u00B0C')
+
+axs[1,1].bar(np.arange(5),alldata['litter_Mn'].isel(warming=0,litter_year=yr,Ndep=0,soil_pH=1).squeeze().to_masked_array(),color=cm_N(0.25),width=0.25,label='Ndep = 0')
+axs[1,1].bar(np.arange(5)+0.25,alldata['litter_Mn'].isel(warming=0,litter_year=yr,Ndep=1,soil_pH=1).squeeze().to_masked_array(),color=cm_N(0.5),width=0.25,label='Ndep = 50')
+axs[1,1].bar(np.arange(5)+0.5,alldata['litter_Mn'].isel(warming=0,litter_year=yr,Ndep=2,soil_pH=1).squeeze().to_masked_array(),color=cm_N(0.75),width=0.25,label='Ndep = 150')
+
+axs[0,0].bar(np.arange(5),bioavail_Mn.isel(warming=0,time=yr,Ndep=0,soil_pH=1).squeeze().to_masked_array(),color=cm(0.25),width=0.25,label='+ 0\u00B0C')
+axs[0,0].bar(np.arange(5)+0.25,bioavail_Mn.isel(warming=1,time=yr,Ndep=0,soil_pH=1).squeeze().to_masked_array(),color=cm(0.5),width=0.25,label='+ 2\u00B0C')
+axs[0,0].bar(np.arange(5)+0.5,bioavail_Mn.isel(warming=2,time=yr,Ndep=0,soil_pH=1).squeeze().to_masked_array(),color=cm(0.75),width=0.25,label='+ 5\u00B0C')
+
+axs[0,1].bar(np.arange(5),bioavail_Mn.isel(warming=0,time=yr,Ndep=0,soil_pH=1).squeeze().to_masked_array(),color=cm_N(0.25),width=0.25,label='Ndep = 0')
+axs[0,1].bar(np.arange(5)+0.25,bioavail_Mn.isel(warming=0,time=yr,Ndep=1,soil_pH=1).squeeze().to_masked_array(),color=cm_N(0.5),width=0.25,label='Ndep = 50')
+axs[0,1].bar(np.arange(5)+0.5,bioavail_Mn.isel(warming=0,time=yr,Ndep=2,soil_pH=1).squeeze().to_masked_array(),color=cm_N(0.75),width=0.25,label='Ndep = 150')
+
+axs[0,0].legend()
+axs[0,1].legend()
+
+axs[0,1].set(title='Soil bioavailable Mn',xlabel='Birnessite dissolution rate scale\n(mmol Mn m$^{-3}$ soil year$^{-1}$)',ylabel='Bioavailable Mn (mmol m$^{-2}$)',xticks=np.arange(5)+0.25,xticklabels=birnrate_labels,yscale='log')
+axs[1,1].set(title='Leaf litter Mn concentration',xlabel='Birnessite dissolution rate scale\n(mmol Mn m$^{-3}$ soil year$^{-1}$)',ylabel='Mn concentration (mmol kg$^{-1}$)',xticks=np.arange(5)+0.25,xticklabels=birnrate_labels,ylim=(0,205))
+axs[2,1].set(title='Particulate organic matter stock',xlabel='Litter Mn concentration (mmol kg$^{-1}$)',ylabel='POM stock (kg C m$^{-2}$)',ylim=(0.9,1.6))
+axs[0,0].set(title='Soil bioavailable Mn',xlabel='Birnessite dissolution rate scale\n(mmol Mn m$^{-3}$ soil year$^{-1}$)',ylabel='Bioavailable Mn (mmol m$^{-2}$)',xticks=np.arange(5)+0.25,xticklabels=birnrate_labels,yscale='log')
+axs[1,0].set(title='Leaf litter Mn concentration',xlabel='Birnessite dissolution rate scale\n(mmol Mn m$^{-3}$ soil year$^{-1}$)',ylabel='Mn concentration (mmol kg$^{-1}$)',xticks=np.arange(5)+0.25,xticklabels=birnrate_labels,ylim=(0,205))
+axs[2,0].set(title='Particulate organic matter stock',xlabel='Litter Mn concentration (mmol kg$^{-1}$)',ylabel='POM stock (kg C m$^{-2}$)',ylim=(0.9,1.6))
+
+
+# axs[1,0].plot(bioavail_Mn.isel(warming=0,Ndep=0,time=39).to_masked_array().ravel(),alldata['litter_Mn'].isel(warming=0,Ndep=0,litter_year=39).to_masked_array().ravel(),'o',c=cmap(0.25),label='+ O\u00B0C')
+# axs[1,1].plot(bioavail_Mn.isel(warming=0,Ndep=0,time=39).to_masked_array().ravel(),alldata['litter_Mn'].isel(warming=0,Ndep=0,litter_year=39).to_masked_array().ravel(),'o',c=cmap(0.25),label='+ O\u00B0C')
+# axs[1,1].plot(bioavail_Mn.isel(warming=1,Ndep=0,time=39).to_masked_array().ravel(),alldata['litter_Mn'].isel(warming=1,Ndep=0,litter_year=39).to_masked_array().ravel(),'o',c=cmap(0.5),label='+ 2\u00B0C')
+# axs[1,1].plot(bioavail_Mn.isel(warming=2,Ndep=0,time=39).to_masked_array().ravel(),alldata['litter_Mn'].isel(warming=2,Ndep=0,litter_year=39).to_masked_array().ravel(),'o',c=cmap(0.75),label='+ 5\u00B0C')
+
+# axs[1,0].plot(bioavail_Mn.isel(warming=0,Ndep=1,time=39).to_masked_array().ravel(),alldata['litter_Mn'].isel(warming=0,Ndep=1,litter_year=39).to_masked_array().ravel(),'^',c=cmap(0.5),label='+ O\u00B0C')
 # axs[1].plot(bioavail_Mn.isel(warming=1,Ndep=1,time=39).to_masked_array().ravel(),alldata['litter_Mn'].isel(warming=1,Ndep=1,litter_year=39).to_masked_array().ravel(),'^',c=cmap(0.5),label='+ 2\u00B0C')
 # axs[1].plot(bioavail_Mn.isel(warming=2,Ndep=1,time=39).to_masked_array().ravel(),alldata['litter_Mn'].isel(warming=2,Ndep=1,litter_year=39).to_masked_array().ravel(),'^',c=cmap(0.75),label='+ 5\u00B0C')
 
-axs[1].plot(bioavail_Mn.isel(warming=0,Ndep=2,time=39).to_masked_array().ravel(),alldata['litter_Mn'].isel(warming=0,Ndep=2,litter_year=39).to_masked_array().ravel(),'s',c=cmap(0.75),label='+ O\u00B0C')
+# axs[1,0].plot(bioavail_Mn.isel(warming=0,Ndep=2,time=39).to_masked_array().ravel(),alldata['litter_Mn'].isel(warming=0,Ndep=2,litter_year=39).to_masked_array().ravel(),'s',c=cmap(0.75),label='+ O\u00B0C')
 # axs[1].plot(bioavail_Mn.isel(warming=1,Ndep=2,time=39).to_masked_array().ravel(),alldata['litter_Mn'].isel(warming=1,Ndep=2,litter_year=39).to_masked_array().ravel(),'s',c=cmap(0.5),label='+ 2\u00B0C')
 # axs[1].plot(bioavail_Mn.isel(warming=2,Ndep=2,time=39).to_masked_array().ravel(),alldata['litter_Mn'].isel(warming=2,Ndep=2,litter_year=39).to_masked_array().ravel(),'s',c=cmap(0.75),label='+ 5\u00B0C')
 
-axs[2].plot(bioavail_Mn.isel(warming=0,Ndep=0,time=39).to_masked_array().ravel(),(totalMn-birnessite).isel(depth=0,warming=0,Ndep=0,time=39).to_masked_array().ravel(),'o',c=cmap(0.25),label='+ O\u00B0C')
-# axs[2].plot(bioavail_Mn.isel(warming=1,Ndep=0,time=39).to_masked_array().ravel(),(totalMn-birnessite).isel(depth=0,warming=1,Ndep=0,time=39).to_masked_array().ravel(),'o',c=cmap(0.5),label='+ 2\u00B0C')
-# axs[2].plot(bioavail_Mn.isel(warming=2,Ndep=0,time=39).to_masked_array().ravel(),(totalMn-birnessite).isel(depth=0,warming=2,Ndep=0,time=39).to_masked_array().ravel(),'o',c=cmap(0.75),label='+ 5\u00B0C')
+# axs[2,0].plot(bioavail_Mn.isel(warming=0,Ndep=0,time=39,soil_pH=1).to_masked_array().ravel(),(totalMn-birnessite).isel(depth=0,warming=0,Ndep=0,time=39,soil_pH=1).to_masked_array().ravel(),'o',c=cmap(0.25),label='+ O\u00B0C')
+# axs[2,1].plot(bioavail_Mn.isel(warming=0,Ndep=0,time=39,soil_pH=1).to_masked_array().ravel(),(totalMn-birnessite).isel(depth=0,warming=0,Ndep=0,time=39,soil_pH=1).to_masked_array().ravel(),'o',c=cmap(0.25),label='+ O\u00B0C')
+# axs[2,1].plot(bioavail_Mn.isel(warming=1,Ndep=0,time=39,soil_pH=1).to_masked_array().ravel(),(totalMn-birnessite).isel(depth=0,warming=1,Ndep=0,time=39,soil_pH=1).to_masked_array().ravel(),'o',c=cmap(0.5),label='+ 2\u00B0C')
+# axs[2,1].plot(bioavail_Mn.isel(warming=2,Ndep=0,time=39,soil_pH=1).to_masked_array().ravel(),(totalMn-birnessite).isel(depth=0,warming=2,Ndep=0,time=39,soil_pH=1).to_masked_array().ravel(),'o',c=cmap(0.75),label='+ 5\u00B0C')
 
-axs[2].plot(bioavail_Mn.isel(warming=0,Ndep=1,time=39).to_masked_array().ravel(),(totalMn-birnessite).isel(depth=0,warming=0,Ndep=1,time=39).to_masked_array().ravel(),'^',c=cmap(0.5),label='+ O\u00B0C')
-# axs[2].plot(bioavail_Mn.isel(warming=1,Ndep=1,time=39).to_masked_array().ravel(),(totalMn-birnessite).isel(depth=0,warming=1,Ndep=1,time=39).to_masked_array().ravel(),'^',c=cmap(0.5),label='+ 2\u00B0C')
-# axs[2].plot(bioavail_Mn.isel(warming=2,Ndep=1,time=39).to_masked_array().ravel(),(totalMn-birnessite).isel(depth=0,warming=2,Ndep=1,time=39).to_masked_array().ravel(),'^',c=cmap(0.75),label='+ 5\u00B0C')
+# axs[2,0].plot(bioavail_Mn.isel(warming=0,Ndep=1,time=39,soil_pH=1).to_masked_array().ravel(),(totalMn-birnessite).isel(depth=0,warming=0,Ndep=1,time=39,soil_pH=1).to_masked_array().ravel(),'^',c=cmap(0.5),label='+ O\u00B0C')
+# # axs[2].plot(bioavail_Mn.isel(warming=1,Ndep=1,time=39).to_masked_array().ravel(),(totalMn-birnessite).isel(depth=0,warming=1,Ndep=1,time=39).to_masked_array().ravel(),'^',c=cmap(0.5),label='+ 2\u00B0C')
+# # axs[2].plot(bioavail_Mn.isel(warming=2,Ndep=1,time=39).to_masked_array().ravel(),(totalMn-birnessite).isel(depth=0,warming=2,Ndep=1,time=39).to_masked_array().ravel(),'^',c=cmap(0.75),label='+ 5\u00B0C')
 
-axs[2].plot(bioavail_Mn.isel(warming=0,Ndep=2,time=39).to_masked_array().ravel(),(totalMn-birnessite).isel(depth=0,warming=0,Ndep=2,time=39).to_masked_array().ravel(),'s',c=cmap(0.75),label='+ O\u00B0C')
-# axs[2].plot(bioavail_Mn.isel(warming=1,Ndep=2,time=39).to_masked_array().ravel(),(totalMn-birnessite).isel(depth=0,warming=1,Ndep=2,time=39).to_masked_array().ravel(),'s',c=cmap(0.5),label='+ 2\u00B0C')
-# axs[2].plot(bioavail_Mn.isel(warming=2,Ndep=2,time=39).to_masked_array().ravel(),(totalMn-birnessite).isel(depth=0,warming=2,Ndep=2,time=39).to_masked_array().ravel(),'s',c=cmap(0.75),label='+ 5\u00B0C')
+# axs[2,0].plot(bioavail_Mn.isel(warming=0,Ndep=2,time=39,soil_pH=1).to_masked_array().ravel(),(totalMn-birnessite).isel(depth=0,warming=0,Ndep=2,time=39,soil_pH=1).to_masked_array().ravel(),'s',c=cmap(0.75),label='+ O\u00B0C')
+# # axs[2].plot(bioavail_Mn.isel(warming=1,Ndep=2,time=39).to_masked_array().ravel(),(totalMn-birnessite).isel(depth=0,warming=1,Ndep=2,time=39).to_masked_array().ravel(),'s',c=cmap(0.5),label='+ 2\u00B0C')
+# # axs[2].plot(bioavail_Mn.isel(warming=2,Ndep=2,time=39).to_masked_array().ravel(),(totalMn-birnessite).isel(depth=0,warming=2,Ndep=2,time=39).to_masked_array().ravel(),'s',c=cmap(0.75),label='+ 5\u00B0C')
 
 
-axs[0].set(title='Forest floor C stock',xlabel='Bioavailable soil Mn (mmol m$^{-2}$)',ylabel='C stock (kg C m$^{-2}$)')
-axs[1].set(title='Leaf litter Mn concentration',xlabel='Bioavailable soil Mn (mmol m$^{-2}$)',ylabel='Mn concentration (mmol kg$^{-1}$)')
-axs[2].set(title='Forest floor bioavailable Mn',xlabel='Bioavailable soil Mn (mmol m$^{-2}$)',ylabel='Bioavailable Mn (mmol m$^{-2}$)')
 
 
 for num in range(axs.size):
@@ -715,7 +827,7 @@ datadir='/home/b0u/Mn data/'
 Berg_massloss1=pandas.read_csv(datadir+'Berg et al 2015/Fig 4A.csv')
 Berg_massloss2=pandas.read_csv(datadir+'Berg et al 2015/Fig 4B.csv')
 
-f,axs=plt.subplots(1,1,num='Figure S2 Litter annual mass loss',clear=True,figsize=(8,4.6))
+f,axs=plt.subplots(1,1,num='Figure S2 Litter annual mass loss',clear=True,figsize=(6,4.6))
 incubation_length=1
 addyrs=0
 litter_massloss=(1-(incubation_data['Total Sorbed Lignin']+incubation_data['Total Sorbed Cellulose']).isel(time=slice(oneyr+addyrs*oneyr,None,oneyr*incubation_length))/(incubation_data['Total Sorbed Lignin']+incubation_data['Total Sorbed Cellulose']).isel(time=1+addyrs*oneyr)).to_masked_array().ravel()*100
@@ -772,7 +884,7 @@ save_one_fig(f)
 
 # save_one_fig(f)
 
-f,axs=plt.subplots(nrows=4,num='Incubation time series',clear=True,figsize=(4,6))
+f,axs=plt.subplots(nrows=6,num='Incubation time series',clear=True,figsize=(4,6))
 axs[0].plot(incubation_data['Total Mn++'].isel(birnrate=4,soil_pH=0))
 axs[0].plot(incubation_data['Total Mn++'].isel(birnrate=1,soil_pH=0))
 axs[0].plot(incubation_data['Total Mn++'].isel(birnrate=4,soil_pH=4))
@@ -796,6 +908,20 @@ axs[3].plot(incubation_data['Total Sorbed Lignin'].isel(birnrate=1,soil_pH=0))
 axs[3].plot(incubation_data['Total Sorbed Lignin'].isel(birnrate=4,soil_pH=4))
 axs[3].plot(incubation_data['Total Sorbed Lignin'].isel(birnrate=1,soil_pH=4))
 axs[3].set_title('Lignin')
+
+axs[4].plot(incubation_data['Total Tracer'].isel(birnrate=4,soil_pH=0))
+axs[4].plot(incubation_data['Total Tracer'].isel(birnrate=1,soil_pH=0))
+axs[4].plot(incubation_data['Total Tracer'].isel(birnrate=4,soil_pH=4))
+axs[4].plot(incubation_data['Total Tracer'].isel(birnrate=1,soil_pH=4))
+axs[4].set_title('Cumulative CO2')
+
+axs[5].plot(incubation_data['Total DOM1'].isel(birnrate=4,soil_pH=0))
+axs[5].plot(incubation_data['Total DOM1'].isel(birnrate=1,soil_pH=0))
+axs[5].plot(incubation_data['Total DOM1'].isel(birnrate=4,soil_pH=4))
+axs[5].plot(incubation_data['Total DOM1'].isel(birnrate=1,soil_pH=4))
+axs[5].set_title('DOM1')
+
+save_one_fig(f)
 
 def save_all_figs(dirname,format='png',**kwargs):
     for fname in plt.get_figlabels():
