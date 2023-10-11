@@ -129,7 +129,6 @@ You can of course organize these codes however you want, as long as you make sur
 
 3.	Run simulation with OLMT. Several example simulations are in marsh_sim_cmds.txt
 
-        export $HOME/ELM-alquimia=$HOME/ELM-alquimia
         cd $HOME/ELM-alquimia/OLMT
         mkdir -p ~/cases
         
