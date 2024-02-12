@@ -11,10 +11,14 @@ else:
 
 datadir=os.path.expanduser('~/ELM_outputs/')
 
-saline_plantsal=xarray.open_mfdataset([datadir+'alquimia_salinity_US-PHM_ICB20TRCNRDCTCBC/run/alquimia_salinity_US-PHM_ICB20TRCNRDCTCBC.elm.h0.%s-01-01-00000.nc'%yr for yr in yrs]).squeeze()
-saline=xarray.open_mfdataset([datadir+'alquimia_salinity_noplantsal_US-PHM_ICB20TRCNRDCTCBC/run/alquimia_salinity_noplantsal_US-PHM_ICB20TRCNRDCTCBC.elm.h0.%s-01-01-00000.nc'%yr for yr in yrs]).squeeze()
+plantsalname='alquimia_salinity_fastSO4_newplantsal'
+salname='alquimia_salinity_noplantsal_fastSO4'
+freshname='alquimia_nosalinity_fastSOM'
 
-fresh=xarray.open_mfdataset([datadir+'alquimia_nosalinity_US-PHM_ICB20TRCNRDCTCBC/run/alquimia_nosalinity_US-PHM_ICB20TRCNRDCTCBC.elm.h0.%s-01-01-00000.nc'%yr for yr in yrs]).squeeze()
+saline_plantsal=xarray.open_mfdataset([datadir+'%s_US-PHM_ICB20TRCNRDCTCBC/run/%s_US-PHM_ICB20TRCNRDCTCBC.elm.h0.%d-01-01-00000.nc'%(plantsalname,plantsalname,yr) for yr in yrs]).squeeze()
+saline=xarray.open_mfdataset([datadir+'%s_US-PHM_ICB20TRCNRDCTCBC/run/%s_US-PHM_ICB20TRCNRDCTCBC.elm.h0.%d-01-01-00000.nc'%(salname,salname,yr) for yr in yrs]).squeeze()
+
+fresh=xarray.open_mfdataset([datadir+'%s_US-PHM_ICB20TRCNRDCTCBC/run/%s_US-PHM_ICB20TRCNRDCTCBC.elm.h0.%d-01-01-00000.nc'%(freshname,freshname,yr) for yr in yrs]).squeeze()
 
 import pandas,matplotlib.dates
 WT_shad=pandas.read_csv('/home/b0u/PIE_porewater_WT_data/knb-lter-pie.569.1/MAR-RO-Wtable-Shad-2019.csv',
@@ -26,7 +30,7 @@ WT_nelson=pandas.read_csv('/home/b0u/PIE_porewater_WT_data/knb-lter-pie.568.1/MA
 marsh_height_nelson={'N201':1.368,'N202':1.360,'N203':1.474,'N204':1.697,'N205':1.812}
 
 porewater1=pandas.read_csv('/home/b0u/PIE_porewater_WT_data/knb-lter-pie.71.6/MAR-PR-Porewater.csv',
-                        parse_dates=['Date'],na_values=('NA','NS'))
+                        parse_dates=['Date'],na_values=('NA','NS','  '))
 porewater2=pandas.read_csv('/home/b0u/PIE_porewater_WT_data/knb-lter-pie.34.20/PIE_MP_porewater_2022.csv',
                         parse_dates=[['YEAR','MONTH','DAY']],na_values=('NA','.','BD'))
 porewater_lawpt_alt=pandas.read_csv('/home/b0u/PIE_porewater_WT_data/knb-lter-pie.126.15/PIE_MP_LAC_porewatermeans_2022.csv',
@@ -35,17 +39,26 @@ porewater_lawpt_patens=pandas.read_csv('/home/b0u/PIE_porewater_WT_data/knb-lter
                         parse_dates=[['YEAR','MONTH','DAY']],na_values='.')
 fluxdata=pandas.read_excel('/home/b0u/PIE_porewater_WT_data/knb-lter-pie.503.2 (Flux data)/MAR-SH-EddyFluxTower-2015_v2.xlsx',sheet_name=1,index_col=0)
 
+Fettrow_mesocosm=pandas.read_excel('/home/b0u/PIE_porewater_WT_data/Fettrow_data/Data_SLR_Mesocosm_Biogeochemistry_2023.xlsx')
+Fettrow_creekbank=pandas.read_excel('/home/b0u/PIE_porewater_WT_data/Fettrow_data/AGU_TidalCreekPaper_Data_JGR_2023.xlsx')
+
+REUdata=pandas.read_excel('/home/b0u/PIE_porewater_WT_data/2014_REU_porewaterdata.xlsx')
+
 vars2=['H2OSFC','salinity','temperature']
 vars=['Sulfate','Sulfide','DOC','DIC','CH4','pH']
-vmax={'sulfate':25.0,'CH4':1.5,'sulfide':1.05,'salinity':36,'DIC':10.0,'pH':8.8}
-vmin={'salinity':0.0,'pH':6.6,'sulfate':0.0}
+vmax={'sulfate':30.0,'CH4':1.5,'sulfide':4.0,'salinity':36,'DIC':30.0,'pH':8.8,'DOC':13.0}
+vmin={'salinity':0.0,'pH':6.0,'sulfate':0.0}
 f,a=plt.subplots(ncols=3,nrows=len(vars),num='Salinity contour comp',clear=True,figsize=(9,9.5))
 f2,a2=plt.subplots(ncols=2,nrows=len(vars2),num='Salinity contour comp 2',clear=True,figsize=(9,8))
 start=f'{yrs[0]:d}-04-30'
 end=f'{yrs[-1]:d}-11-01'
 pltELM.plot_vars(saline.sel(time=slice(start,end)),vars,a_contour=a[:,0],a_profile=a[:,2],profile_color='orange',vmax=vmax,vmin=vmin,do_snapshots=False,mean_profile=True,quantiles=[0.1,0.9])
 pltELM.plot_vars(fresh.sel(time=slice(start,end)),vars,a_contour=a[:,1],a_profile=a[:,2],profile_color='blue',vmax=vmax,vmin=vmin,do_snapshots=False,mean_profile=True,quantiles=[0.1,0.9])
-pltELM.plot_vars(saline.sel(time=slice(start,end)),vars2,a_contour=a2[:,0],a_profile=a2[:,1],profile_color='orange',vmax=vmax,vmin=vmin,do_snapshots=False,mean_profile=True,quantiles=[0.1,0.9])
+pltELM.plot_vars(saline.sel(time=slice(start,end)),vars2,a_contour=a2[:,0],profile_color='orange',vmax=vmax,vmin=vmin,do_snapshots=False,mean_profile=True,quantiles=[0.1,0.9],WT_thresh=0.85)
+pltELM.plot_vars(saline.sel(time=slice(start,end)),vars2[:-1],a_profile=a2[:,1],profile_color='orange',vmax=vmax,vmin=vmin,do_snapshots=False,mean_profile=True,quantiles=[0.1,0.9],WT_thresh=0.85)
+# Shorter time series to average temperature so it matches measurement range
+pltELM.plot_vars(saline.sel(time=slice(f'{yrs[0]:d}-05-28',f'{yrs[0]:d}-10-01')),[vars2[-1]],a_profile=a2[-1,1],profile_color='orange',vmax=vmax,vmin=vmin,do_snapshots=False,mean_profile=True,quantiles=[0.1,0.9],WT_thresh=0.85)
+
 # pltELM.plot_vars(fresh.isel(time=slice(start,end)),'fresh',vars2,a=a2[:,[1,2]],profile_color='blue',vmax=vmax,do_snapshots=False,mean_profile=True,quantiles=[0.1,0.9])
 
 # Shad4=porewater1.set_index('Location').loc['Shad-4m']
@@ -61,25 +74,81 @@ pltELM.plot_vars(saline.sel(time=slice(start,end)),vars2,a_contour=a2[:,0],a_pro
 #     a[vars.index('DOC'),2].plot(sample['DOC'].astype(float)/1000,sample['Depth']/100,'s',ms=0.75,c='k')
 #     # a[vars.index('Sulfide'),2].plot(sample['H2S'].astype(float),sample['Depth']/100,'s',ms=0.75,c='k')
 
+# LPP is high marsh and LPA is low marsh according to package metadata
 LPP=porewater2[(porewater2['TRT']=='C')&(porewater2['SITE']=='LPP')].groupby('DEPTH')
 LPA=porewater2[(porewater2['TRT']=='C')&(porewater2['SITE']=='LPA')].groupby('DEPTH')
-a2[vars2.index('salinity'),-1].errorbar(LPP.mean()['SALINITY'],LPP.mean().index/100,
-                                        xerr=np.row_stack((LPP['SALINITY'].mean()-LPP['SALINITY'].quantile(0.1),LPP['SALINITY'].quantile(0.9)-LPP['SALINITY'].mean())),
-                                        c='k',marker='o',ls='None')
+LP=LPA
+a2[vars2.index('salinity'),-1].errorbar(LP.mean()['SALINITY'],LP.mean().index/100,
+                                        xerr=np.row_stack((LP['SALINITY'].mean()-LP['SALINITY'].quantile(0.1),LP['SALINITY'].quantile(0.9)-LP['SALINITY'].mean())),
+                                        c='orange',marker='o',ls='None')
 
-a[vars.index('Sulfide'),-1].errorbar(LPP.mean()['S2']*1e-3,LPP.mean().index/100,
-                                        xerr=np.row_stack((LPP['S2'].mean()-LPP['S2'].quantile(0.1),LPP['S2'].quantile(0.9)-LPP['S2'].mean()))*1e-3,
-                                        c='k',marker='o',ls='None')
+a[vars.index('Sulfide'),-1].errorbar(LP.mean()['S2']*1e-3,LP.mean().index/100,
+                                        xerr=np.row_stack((LP['S2'].mean()-LP['S2'].quantile(0.1),LP['S2'].quantile(0.9)-LP['S2'].mean()))*1e-3,
+                                        c='orange',marker='o',ls='None')
 
-site='Shad-4m'
+# site='Shad-4m'
+# a[vars.index('DOC'),2].errorbar(porewater1.groupby(['Location','Depth'])['DOC'].mean()[site]*1e-3,porewater1.groupby(['Location','Depth'])['DOC'].mean()[site].index/100,
+#                                 xerr=np.row_stack((porewater1.groupby(['Location','Depth'])['DOC'].mean()[site]-porewater1.groupby(['Location','Depth'])['DOC'].quantile(0.1)[site],
+#                                                    porewater1.groupby(['Location','Depth'])['DOC'].quantile(0.9)[site]-porewater1.groupby(['Location','Depth'])['DOC'].mean()[site]))*1e-3,
+#                                                    c='k',marker='s',ls='None')
+# a[vars.index('Sulfide'),2].errorbar(porewater1.groupby(['Location','Depth'])['H2S'].mean()[site],porewater1.groupby(['Location','Depth'])['H2S'].mean()[site].index/100,
+#                                 xerr=np.row_stack((porewater1.groupby(['Location','Depth'])['H2S'].mean()[site]-porewater1.groupby(['Location','Depth'])['H2S'].quantile(0.1)[site],
+#                                                    porewater1.groupby(['Location','Depth'])['H2S'].quantile(0.9)[site]-porewater1.groupby(['Location','Depth'])['H2S'].mean()[site])),
+#                                                    c='k',marker='s',ls='None')
+
+site='Shad-10m'
 a[vars.index('DOC'),2].errorbar(porewater1.groupby(['Location','Depth'])['DOC'].mean()[site]*1e-3,porewater1.groupby(['Location','Depth'])['DOC'].mean()[site].index/100,
                                 xerr=np.row_stack((porewater1.groupby(['Location','Depth'])['DOC'].mean()[site]-porewater1.groupby(['Location','Depth'])['DOC'].quantile(0.1)[site],
                                                    porewater1.groupby(['Location','Depth'])['DOC'].quantile(0.9)[site]-porewater1.groupby(['Location','Depth'])['DOC'].mean()[site]))*1e-3,
-                                                   c='k',marker='s',ls='None')
+                                                   c='orange',marker='^',ls='None')
 a[vars.index('Sulfide'),2].errorbar(porewater1.groupby(['Location','Depth'])['H2S'].mean()[site],porewater1.groupby(['Location','Depth'])['H2S'].mean()[site].index/100,
                                 xerr=np.row_stack((porewater1.groupby(['Location','Depth'])['H2S'].mean()[site]-porewater1.groupby(['Location','Depth'])['H2S'].quantile(0.1)[site],
                                                    porewater1.groupby(['Location','Depth'])['H2S'].quantile(0.9)[site]-porewater1.groupby(['Location','Depth'])['H2S'].mean()[site])),
-                                                   c='k',marker='s',ls='None')
+                                                   c='orange',marker='^',ls='None')
+a2[vars2.index('salinity'),-1].errorbar(porewater1.groupby(['Location','Depth'])['Sal'].mean()[site],porewater1.groupby(['Location','Depth'])['Sal'].mean()[site].index/100,
+                                xerr=np.row_stack((porewater1.groupby(['Location','Depth'])['Sal'].mean()[site]-porewater1.groupby(['Location','Depth'])['Sal'].quantile(0.1)[site],
+                                                   porewater1.groupby(['Location','Depth'])['Sal'].quantile(0.9)[site]-porewater1.groupby(['Location','Depth'])['Sal'].mean()[site])),
+                                                   c='orange',marker='^',ls='None')
+
+
+site='Typha-10m'
+a[vars.index('DOC'),2].errorbar(porewater1.groupby(['Location','Depth'])['DOC'].mean()[site]*1e-3,porewater1.groupby(['Location','Depth'])['DOC'].mean()[site].index/100,
+                                xerr=np.row_stack((porewater1.groupby(['Location','Depth'])['DOC'].mean()[site]-porewater1.groupby(['Location','Depth'])['DOC'].quantile(0.1)[site],
+                                                   porewater1.groupby(['Location','Depth'])['DOC'].quantile(0.9)[site]-porewater1.groupby(['Location','Depth'])['DOC'].mean()[site]))*1e-3,
+                                                   c='blue',marker='x',ls='None')
+site='Typha-4m'
+a[vars.index('Sulfide'),2].errorbar(porewater1.groupby(['Location','Depth'])['H2S'].mean()[site],porewater1.groupby(['Location','Depth'])['H2S'].mean()[site].index/100,
+                                xerr=np.row_stack((porewater1.groupby(['Location','Depth'])['H2S'].mean()[site]-porewater1.groupby(['Location','Depth'])['H2S'].quantile(0.1)[site],
+                                                   porewater1.groupby(['Location','Depth'])['H2S'].quantile(0.9)[site]-porewater1.groupby(['Location','Depth'])['H2S'].mean()[site])),
+                                                   c='blue',marker='x',ls='None')
+
+a2[vars2.index('salinity'),-1].errorbar(porewater1.groupby(['Location','Depth'])['Sal'].mean()[site],porewater1.groupby(['Location','Depth'])['Sal'].mean()[site].index/100,
+                                xerr=np.row_stack((porewater1.groupby(['Location','Depth'])['Sal'].mean()[site]-porewater1.groupby(['Location','Depth'])['Sal'].quantile(0.1)[site],
+                                                   porewater1.groupby(['Location','Depth'])['Sal'].quantile(0.9)[site]-porewater1.groupby(['Location','Depth'])['Sal'].mean()[site])),
+                                                   c='blue',marker='x',ls='None')
+
+# Fettrow et al 2023 (JGR) in situ measurements. Rhizon depths are 6, 18, and 30 cm
+# a[vars.index('DOC'),2].errorbar(Fettrow_creekbank[Fettrow_creekbank['Location']=='Rhizon 1']['DOC(mM)'].mean(),0.06,xerr=np.row_stack((Fettrow_creekbank[Fettrow_creekbank['Location']=='Rhizon 1']['DOC(mM)'].mean()-Fettrow_creekbank[Fettrow_creekbank['Location']=='Rhizon 1']['DOC(mM)'].quantile(0.1),Fettrow_creekbank[Fettrow_creekbank['Location']=='Rhizon 1']['DOC(mM)'].quantile(0.9)-Fettrow_creekbank[Fettrow_creekbank['Location']=='Rhizon 1']['DOC(mM)'].mean())),c='orange',marker='*')
+# a[vars.index('DOC'),2].errorbar(Fettrow_creekbank[Fettrow_creekbank['Location']=='Rhizon 2']['DOC(mM)'].mean(),0.18,xerr=np.row_stack((Fettrow_creekbank[Fettrow_creekbank['Location']=='Rhizon 1']['DOC(mM)'].mean()-Fettrow_creekbank[Fettrow_creekbank['Location']=='Rhizon 2']['DOC(mM)'].quantile(0.1),Fettrow_creekbank[Fettrow_creekbank['Location']=='Rhizon 2']['DOC(mM)'].quantile(0.9)-Fettrow_creekbank[Fettrow_creekbank['Location']=='Rhizon 2']['DOC(mM)'].mean())),c='orange',marker='*')
+# a[vars.index('DOC'),2].errorbar(Fettrow_creekbank[Fettrow_creekbank['Location']=='Rhizon 3']['DOC(mM)'].mean(),0.30,xerr=np.row_stack((Fettrow_creekbank[Fettrow_creekbank['Location']=='Rhizon 1']['DOC(mM)'].mean()-Fettrow_creekbank[Fettrow_creekbank['Location']=='Rhizon 3']['DOC(mM)'].quantile(0.1),Fettrow_creekbank[Fettrow_creekbank['Location']=='Rhizon 3']['DOC(mM)'].quantile(0.9)-Fettrow_creekbank[Fettrow_creekbank['Location']=='Rhizon 3']['DOC(mM)'].mean())),c='orange',marker='*')
+
+# a[vars.index('DIC'),2].errorbar(Fettrow_creekbank[Fettrow_creekbank['Location']=='Rhizon 1']['DIC(mM)'].mean(),0.06,xerr=np.row_stack((Fettrow_creekbank[Fettrow_creekbank['Location']=='Rhizon 1']['DIC(mM)'].mean()-Fettrow_creekbank[Fettrow_creekbank['Location']=='Rhizon 1']['DIC(mM)'].quantile(0.1),Fettrow_creekbank[Fettrow_creekbank['Location']=='Rhizon 1']['DIC(mM)'].quantile(0.9)-Fettrow_creekbank[Fettrow_creekbank['Location']=='Rhizon 1']['DIC(mM)'].mean())),c='orange',marker='*')
+# a[vars.index('DIC'),2].errorbar(Fettrow_creekbank[Fettrow_creekbank['Location']=='Rhizon 2']['DIC(mM)'].mean(),0.18,xerr=np.row_stack((Fettrow_creekbank[Fettrow_creekbank['Location']=='Rhizon 1']['DIC(mM)'].mean()-Fettrow_creekbank[Fettrow_creekbank['Location']=='Rhizon 2']['DIC(mM)'].quantile(0.1),Fettrow_creekbank[Fettrow_creekbank['Location']=='Rhizon 2']['DIC(mM)'].quantile(0.9)-Fettrow_creekbank[Fettrow_creekbank['Location']=='Rhizon 2']['DIC(mM)'].mean())),c='orange',marker='*')
+# a[vars.index('DIC'),2].errorbar(Fettrow_creekbank[Fettrow_creekbank['Location']=='Rhizon 3']['DIC(mM)'].mean(),0.30,xerr=np.row_stack((Fettrow_creekbank[Fettrow_creekbank['Location']=='Rhizon 1']['DIC(mM)'].mean()-Fettrow_creekbank[Fettrow_creekbank['Location']=='Rhizon 3']['DIC(mM)'].quantile(0.1),Fettrow_creekbank[Fettrow_creekbank['Location']=='Rhizon 3']['DIC(mM)'].quantile(0.9)-Fettrow_creekbank[Fettrow_creekbank['Location']=='Rhizon 3']['DIC(mM)'].mean())),c='orange',marker='*')
+
+# Fettrow et al 2023 (BGC) mesocosm, using 0-8 cm soil cores
+# Mean salinity of these was about 2.4 ppt so calling them fresh
+# a[vars.index('DOC'),2].errorbar(Fettrow_mesocosm['DOC Rhizon (mM)'].mean(),0.04,xerr=np.row_stack((Fettrow_mesocosm['DOC Rhizon (mM)'].mean()-Fettrow_mesocosm['DOC Rhizon (mM)'].quantile(0.1),Fettrow_mesocosm['DOC Rhizon (mM)'].quantile(0.9)-Fettrow_mesocosm['DOC Rhizon (mM)'].mean())),c='blue',marker='*')
+
+samp=(REUdata['Sample'].str.startswith('Low Marsh 20')|REUdata['Sample'].str.startswith('Lo Marsh 20'))
+a[vars.index('DIC'),2].errorbar(REUdata['Average DIC (µm/L)'][samp].mean()*1e-3,0.2,xerr=np.row_stack([REUdata['Average DIC (µm/L)'][samp].mean()-REUdata['Average DIC (µm/L)'][samp].quantile(0.1),REUdata['Average DIC (µm/L)'][samp].quantile(0.9)-REUdata['Average DIC (µm/L)'][samp].mean()])*1e-3,c='orange',marker='^')
+a[vars.index('pH'),2].errorbar(REUdata['pH'][samp].mean(),0.2,xerr=np.row_stack([REUdata['pH'][samp].mean()-REUdata['pH'][samp].quantile(0.1),REUdata['pH'][samp].quantile(0.9)-REUdata['pH'][samp].mean()]),c='orange',marker='^')
+
+
+samp=(REUdata['Sample'].str.startswith('Low Marsh 10')|REUdata['Sample'].str.startswith('Lo Marsh 10'))
+a[vars.index('DIC'),2].errorbar(REUdata['Average DIC (µm/L)'][samp].mean()*1e-3,0.1,xerr=np.row_stack([REUdata['Average DIC (µm/L)'][samp].mean()-REUdata['Average DIC (µm/L)'][samp].quantile(0.1),REUdata['Average DIC (µm/L)'][samp].quantile(0.9)-REUdata['Average DIC (µm/L)'][samp].mean()])*1e-3,c='orange',marker='^')
+a[vars.index('pH'),2].errorbar(REUdata['pH'][samp].mean(),0.1,xerr=np.row_stack([REUdata['pH'][samp].mean()-REUdata['pH'][samp].quantile(0.1),REUdata['pH'][samp].quantile(0.9)-REUdata['pH'][samp].mean()]),c='orange',marker='^')
+
 
 # a2[vars2.index('salinity'),-1].axvline(porewater_lawpt_patens['SALINITY'].mean(),c='k',ls='-')
 # a2[vars2.index('salinity'),-1].axvspan(porewater_lawpt_patens['SALINITY'].quantile(0.1),porewater_lawpt_alt['SALINITY'].quantile(0.9),facecolor='k',alpha=0.25)
@@ -92,8 +161,12 @@ a[vars.index('Sulfide'),2].errorbar(porewater1.groupby(['Location','Depth'])['H2
 #                                         xerr=np.array([[porewater_lawpt_patens['S2'].mean()-porewater_lawpt_patens['S2'].quantile(0.1)],[porewater_lawpt_patens['S2'].quantile(0.9)-porewater_lawpt_patens['S2'].mean()]])*1e-3,
 #                                         yerr=[[0.3-0.1],[0.5-0.3]],c='k',marker='o')
 
-a[1,2].legend(labels=['Saline','Fresh','_','_','LP obs','Shad Obs'])
+a[0,2].legend(labels=['Saline','Fresh','LP obs','Shad Obs','Typha Obs','Fettrow Mesocosm'],handles=a[1,2].lines,facecolor='None',edgecolor='None')
+a2[vars2.index('salinity'),-1].legend(labels=['Saline','LP obs','Shad Obs','Typha Obs'],handles=a2[vars2.index('salinity'),-1].lines,facecolor='None',edgecolor='None')
+# a[1,2].set_xlim(0,5.5) # This accomodates LP and Shad10 higher sulfide values (model is pretty low)
 a2[0,0].set_xlim(a2[1,0].get_xlim())
+a[0,2].set_xlim(left=-0.3)
+a[1,2].set_xlim(left=-0.03)
 
 WT_obs=WT_shad.set_index('Date_Time')[slice('2019-05-01','2019-11-01')]['Logger S103  Dc (m)']-marsh_height_shad['S103']
 a2[0,1].plot(WT_obs.index,WT_obs,c='k')
@@ -106,10 +179,11 @@ a2[0,1].set_xlim(matplotlib.dates.datestr2num('2019-05-01'),matplotlib.dates.dat
 pltELM.letter_label(a)
 pltELM.letter_label(a2)
 
+# Measured temperatures are only available for June through October which doesn't match up with model range of May-November
 for z in [2,10,20,40]:
-    mid=fluxdata[f'TS{z:d}'].mean()
-    left=fluxdata[f'TS{z:d}'].quantile(0.1)
-    right=fluxdata[f'TS{z:d}'].quantile(0.9)
+    mid=fluxdata[f'TS{z:d}']['2015-05-28':'2015-10-01'].mean()
+    left=fluxdata[f'TS{z:d}']['2015-05-28':'2015-10-01'].quantile(0.1)
+    right=fluxdata[f'TS{z:d}']['2015-05-28':'2015-10-01'].quantile(0.9)
     a2[vars2.index('temperature'),-1].errorbar(mid,z/100,xerr=np.array([[mid-left],[right-mid]]),c='k',marker='o')
 
 a2[vars2.index('temperature'),-1].set_xlim(right=28)
@@ -117,28 +191,47 @@ a2[vars2.index('temperature'),-1].set_xlim(right=28)
 a[0,0].set_title('Saline\nSulfate concentration')
 a[0,1].set_title('Fresh\nSulfate concentration')
 
+f,a=plt.subplots(num='Temperature time series',clear=True)
+x=np.arange(8760)/24
+a.plot(x,saline['TSOI'][:,4].to_masked_array()-273.15,label='Model')
+a.plot(x,fluxdata['TS20'][::2].to_numpy(),label='Observed')
+a.legend()
+a.set(xlabel='Day of year',ylabel='Temperature (C)',title='Soil temperature at 20 cm depth')
+
 f,a=plt.subplots(ncols=2,nrows=3,num='Iron',clear=True,figsize=(6.4,7))
 vmax['FeS']=saline['soil_FeS'].T.squeeze()[:8,:].max().compute()
-vmax['Fe2']=(fresh['soil_Fe2'].T.squeeze()[:9,:]/(saline['watsat'].T.squeeze()[:9,:].to_masked_array())).compute().quantile(0.95)
+vmax['Fe2']=(fresh['soil_Fe2'].T.squeeze()[:9,:]/(saline['watsat'].T.squeeze()[:9,:].to_masked_array())).compute().sel(time=slice(start,end)).quantile(0.95)
 # vmax['FeS']=480
 vmin['FeS']=0
 # vmax['FeOxide']=550
 vmin['FeOxide']=0.0
 pltELM.plot_vars(saline.sel(time=slice(start,end)),['Fe2'],a_profile=a[0,1],profile_color='orange',vmax=vmax,vmin=vmin,do_snapshots=False,mean_profile=True,quantiles=[0.1,0.9])
 pltELM.plot_vars(fresh.sel(time=slice(start,end)),['Fe2'],a_contour=a[0,0],a_profile=a[0,1],profile_color='blue',vmax=vmax,vmin=vmin,do_snapshots=False,mean_profile=True,quantiles=[0.1,0.9])
-a[0,1].legend(['Saline','Fresh'])
+
 pltELM.plot_vars(saline.sel(time=slice(start,end)),['FeOxide','FeS'],a_profile=a[[1,2],1],profile_color='orange',vmax=vmax,vmin=vmin,do_snapshots=False,mean_profile=True,quantiles=[0.1,0.9])
 pltELM.plot_vars(fresh.sel(time=slice(start,end)),['FeOxide','FeS'],a_profile=a[[1,2],1],profile_color='blue',vmax=vmax,vmin=vmin,do_snapshots=False,mean_profile=True,quantiles=[0.1,0.9])
 # (fresh['soil_FeOxide'].T.squeeze()[:10,:].diff(dim='time')*1e3).mean(dim='time').plot(ax=a[1,0],vmin=-3e-2,vmax=3e-2,cmap='RdBu_r',cbar_kwargs={'label':'Fe Oxide change (mmol m$^{-3}$ day$^{-1}$)'})
 a[1,0].plot((fresh['soil_FeOxide'].T.squeeze()[:10,:].diff(dim='time')*1e3*24).mean(dim='time'),fresh['levdcmp'][:10],c='blue')
+a[1,0].fill_betweenx(fresh['levdcmp'][:10],(fresh['soil_FeOxide'].T.squeeze()[:10,:].resample(time='1D').mean().diff(dim='time')*1e3).compute().quantile(0.1,dim='time'),(fresh['soil_FeOxide'].T.squeeze()[:10,:].resample(time='1D').mean().diff(dim='time')*1e3).compute().quantile(0.9,dim='time'),fc='blue',alpha=0.3)
+a[1,0].fill_betweenx(saline['levdcmp'][:10],(saline['soil_FeOxide'].T.squeeze()[:10,:].resample(time='1D').mean().diff(dim='time')*1e3).compute().quantile(0.1,dim='time'),(saline['soil_FeOxide'].T.squeeze()[:10,:].resample(time='1D').mean().diff(dim='time')*1e3).compute().quantile(0.9,dim='time'),fc='orange',alpha=0.3)
 a[1,0].plot((saline['soil_FeOxide'].T.squeeze()[:10,:].diff(dim='time')*1e3*24).mean(dim='time'),fresh['levdcmp'][:10],c='orange')
-a[1,0].set(title='Fe oxide change',ylim=(1.5,0),xlabel='Fe Oxide change (mmol Fe m$^{-3}$ day$^{-1}$)',ylabel='Soil depth (m)',xlim=(-2.1e-2,3e-2))
+a[1,0].set(title='Fe oxide change',ylim=(1.5,0),xlabel='Fe Oxide change (mmol Fe m$^{-3}$ day$^{-1}$)',ylabel='Soil depth (m)',xlim=(-01.1,1.8))
 a[1,0].axvline(0,c='k',lw=0.5,ls=':')
 
 a[2,0].plot((fresh['soil_FeS'].T.squeeze()[:10,:].diff(dim='time')*1e3*24).mean(dim='time'),fresh['levdcmp'][:10],c='blue')
+a[2,0].fill_betweenx(fresh['levdcmp'][:10],(fresh['soil_FeS'].T.squeeze()[:10,:].resample(time='1D').mean().diff(dim='time')*1e3).compute().quantile(0.1,dim='time'),(fresh['soil_FeS'].T.squeeze()[:10,:].resample(time='1D').mean().diff(dim='time')*1e3).compute().quantile(0.9,dim='time'),fc='blue',alpha=0.3)
 a[2,0].plot((saline['soil_FeS'].T.squeeze()[:10,:].diff(dim='time')*1e3*24).mean(dim='time'),fresh['levdcmp'][:10],c='orange')
-a[2,0].set(title='Fe sulfide change',ylim=(1.5,0),xlabel='Fe Sulfide change (mmol Fe m$^{-3}$ day$^{-1}$)',ylabel='Soil depth (m)')
+a[2,0].fill_betweenx(saline['levdcmp'][:10],(saline['soil_FeS'].T.squeeze()[:10,:].resample(time='1D').mean().diff(dim='time')*1e3).compute().quantile(0.1,dim='time'),(saline['soil_FeS'].T.squeeze()[:10,:].resample(time='1D').mean().diff(dim='time')*1e3).compute().quantile(0.9,dim='time'),fc='orange',alpha=0.3)
+a[2,0].set(title='Fe sulfide change',ylim=(1.5,0),xlabel='Fe Sulfide change (mmol Fe m$^{-3}$ day$^{-1}$)',ylabel='Soil depth (m)',xlim=(-1.1,1.8))
 a[2,0].axvline(0,c='k',lw=0.5,ls=':')
+
+a[0,1].errorbar(Fettrow_mesocosm['FeII (mM)'].mean(),0.04,xerr=np.row_stack([Fettrow_mesocosm['FeII (mM)'].mean()-Fettrow_mesocosm['FeII (mM)'].quantile(0.1),Fettrow_mesocosm['FeII (mM)'].quantile(0.9)-Fettrow_mesocosm['FeII (mM)'].mean()]),c='blue',marker='*',label='Fettrow mesocosm')
+
+a[0,1].errorbar(Fettrow_creekbank[Fettrow_creekbank['Location']=='Rhizon 1']['Fe(II) (mM)'].mean(),0.06,xerr=np.row_stack((Fettrow_creekbank[Fettrow_creekbank['Location']=='Rhizon 1']['Fe(II) (mM)'].mean()-Fettrow_creekbank[Fettrow_creekbank['Location']=='Rhizon 1']['Fe(II) (mM)'].quantile(0.1),Fettrow_creekbank[Fettrow_creekbank['Location']=='Rhizon 1']['Fe(II) (mM)'].quantile(0.9)-Fettrow_creekbank[Fettrow_creekbank['Location']=='Rhizon 1']['Fe(II) (mM)'].mean())),c='orange',marker='*',label='Fettrow marsh')
+a[0,1].errorbar(Fettrow_creekbank[Fettrow_creekbank['Location']=='Rhizon 2']['Fe(II) (mM)'].mean(),0.18,xerr=np.row_stack((Fettrow_creekbank[Fettrow_creekbank['Location']=='Rhizon 2']['Fe(II) (mM)'].mean()-Fettrow_creekbank[Fettrow_creekbank['Location']=='Rhizon 2']['Fe(II) (mM)'].quantile(0.1),Fettrow_creekbank[Fettrow_creekbank['Location']=='Rhizon 2']['Fe(II) (mM)'].quantile(0.9)-Fettrow_creekbank[Fettrow_creekbank['Location']=='Rhizon 2']['Fe(II) (mM)'].mean())),c='orange',marker='*',label='Fettrow marsh')
+a[0,1].errorbar(Fettrow_creekbank[Fettrow_creekbank['Location']=='Rhizon 3']['Fe(II) (mM)'].mean(),0.30,xerr=np.row_stack((Fettrow_creekbank[Fettrow_creekbank['Location']=='Rhizon 3']['Fe(II) (mM)'].mean()-Fettrow_creekbank[Fettrow_creekbank['Location']=='Rhizon 3']['Fe(II) (mM)'].quantile(0.1),Fettrow_creekbank[Fettrow_creekbank['Location']=='Rhizon 3']['Fe(II) (mM)'].quantile(0.9)-Fettrow_creekbank[Fettrow_creekbank['Location']=='Rhizon 3']['Fe(II) (mM)'].mean())),c='orange',marker='*',label='Fettrow marsh')
+a[0,1].legend(labels=['Saline','Fresh','Fettrow mesocosm','Fettrow marsh'],handles=a[0,1].lines[:4])
+a[0,1].set_xlim(left=-0.01)
 
 pltELM.letter_label(a)
 
@@ -152,46 +245,93 @@ pltELM.letter_label(a)
 
 CH4flux_obs=pandas.read_excel('/home/b0u/PIE_porewater_WT_data/PLM_CH4_gap-filled.xlsx',sheet_name=0,index_col=0)
 import datetime
-CH4flux_resampled=(CH4flux_obs['gap-filled'].resample('7D').mean()*1e-3)
 
-start=f'{yrs[0]:d}-04-01'
+resamp='3D'
+CH4flux_resampled=(CH4flux_obs['gap-filled'].resample(resamp).mean()*1e-3)
+
+DeMott_fluxes=pandas.read_csv('/home/b0u/PIE_porewater_WT_data/Sanders-DeMott EC data/phragmites_eddycovariance_ver2.csv',parse_dates=['datetime'])
+DeMott_CH4=DeMott_fluxes.set_index('datetime').resample(resamp).mean()['CH4_flux']
+
+DeMott_chambers1=pandas.read_csv('/home/b0u/PIE_porewater_WT_data/Sanders-DeMott EC data/Staticchamberfl/chamber_fluxes_2021.csv',parse_dates=['date'])
+DeMott_fresh1=DeMott_chambers1[DeMott_chambers1['salinity']<1]
+DeMott_saline1=DeMott_chambers1[DeMott_chambers1['salinity']>20]
+DeMott_chambers2=pandas.read_csv('/home/b0u/PIE_porewater_WT_data/Sanders-DeMott EC data/Staticchamberfl (1)/chamber_fluxes.csv',parse_dates=['date'])
+DeMott_fresh2=DeMott_chambers2[DeMott_chambers2['sampling_location_name']=='Impounded-Low']
+DeMott_saline2=DeMott_chambers2[DeMott_chambers2['sampling_location_name']=='Unrestricted-High']
+# Add saline chambers too
+
+# start=f'{yrs[0]:d}-04-01'
 f,a=plt.subplots(num='GHG fluxes',clear=True,nrows=4,figsize=(5.6,8.5))
 # (saline['CH4FLUX_ALQUIMIA']/12.011*1e6).plot(ax=a,c='orange',label='Saline')
 # (fresh['CH4FLUX_ALQUIMIA']/12.011*1e6).plot(ax=a,c='blue',label='Fresh')
-(saline['CH4FLUX_ALQUIMIA']/12.011*1e6).resample(time='7D').mean().sel(time=slice(start,end)).plot(ax=a[0],c='orange',label='Saline')
-(fresh['CH4FLUX_ALQUIMIA']/12.011*1e6).resample(time='7D').mean().sel(time=slice(start,end)).plot(ax=a[0],c='blue',label='Fresh')
-(saline_plantsal['CH4FLUX_ALQUIMIA']/12.011*1e6).resample(time='7D').mean().sel(time=slice(start,end)).plot(ax=a[0],c='red',label='Saline + plant response')
+(saline['CH4FLUX_ALQUIMIA']/12.011*1e6).resample(time=resamp).mean().sel(time=slice(start,end)).plot(ax=a[0],c='orange',label='Saline')
+(fresh['CH4FLUX_ALQUIMIA']/12.011*1e6).resample(time=resamp).mean().sel(time=slice(start,end)).plot(ax=a[0],c='blue',label='Fresh')
+(saline_plantsal['CH4FLUX_ALQUIMIA']/12.011*1e6).resample(time=resamp).mean().sel(time=slice(start,end)).plot(ax=a[0],c='red',label='Saline + reduced GPP')
 
-(saline['CH4FLUX_ALQUIMIA']/12.011*1e6).resample(time='7D').mean().sel(time=slice(start,end)).plot(ax=a[1],c='orange',label='Saline')
-(fresh['CH4FLUX_ALQUIMIA']/12.011*1e6).resample(time='7D').mean().sel(time=slice(start,end)).plot(ax=a[1],c='blue',label='Fresh')
-(saline_plantsal['CH4FLUX_ALQUIMIA']/12.011*1e6).resample(time='7D').mean().sel(time=slice(start,end)).plot(ax=a[1],c='red',label='Saline + plant response')
+(saline['CH4FLUX_ALQUIMIA']/12.011*1e6).resample(time=resamp).mean().sel(time=slice(start,end)).plot(ax=a[1],c='orange',label='Saline')
+(fresh['CH4FLUX_ALQUIMIA']/12.011*1e6).resample(time=resamp).mean().sel(time=slice(start,end)).plot(ax=a[1],c='blue',label='Fresh')
+(saline_plantsal['CH4FLUX_ALQUIMIA']/12.011*1e6).resample(time=resamp).mean().sel(time=slice(start,end)).plot(ax=a[1],c='red',label='Saline + reduced GPP')
 
 
 a[0].plot(fresh['time'][0].item()+(CH4flux_resampled.index-datetime.datetime(2019,1,1)).to_pytimedelta(),
-        CH4flux_resampled,c='red',label='Saline obs',linestyle='--')
+        CH4flux_resampled,c='red',label='Saline obs (EC)',linestyle='--')
+
+a[0].plot(fresh['time'][0].item()+(DeMott_saline1.set_index('date').index-datetime.datetime(2021,1,1)).to_pytimedelta(),
+        DeMott_saline1['CH4_flux']*1e-3,c='red',label=None,linestyle='None',marker='o')
+a[0].plot(fresh['time'][0].item()+(DeMott_saline2.set_index('date').index-datetime.datetime(2020,1,1)).to_pytimedelta(),
+        DeMott_saline2['CH4_flux']*1e-3,c='red',label='Saline obs',linestyle='None',marker='o')
+
+# a[0].plot(fresh['time'][0].item()+(DeMott_CH4.index-datetime.datetime(2020,1,1)).to_pytimedelta(),
+#         DeMott_CH4,c='blue',label='Fresh obs',linestyle='--')
+
+a[0].plot(fresh['time'][0].item()+(DeMott_fresh1.set_index('date').index-datetime.datetime(2021,1,1)).to_pytimedelta(),
+        DeMott_fresh1['CH4_flux']*1e-3,c='blue',label=None,linestyle='None',marker='o')
+a[0].plot(fresh['time'][0].item()+(DeMott_fresh2.set_index('date').index-datetime.datetime(2020,1,1)).to_pytimedelta(),
+        DeMott_fresh2['CH4_flux']*1e-3,c='blue',label='Fresh obs',linestyle='None',marker='o')
 
 a[0].set(title='Methane flux',xlabel='Time',ylabel='Methane flux ($\mu$mol m$^{-2}$ s$^{-1}$)')
-a[0].legend()
+a[0].legend(loc='upper right',ncol=2)
 
 a[1].plot(fresh['time'][0].item()+(CH4flux_resampled.index-datetime.datetime(2019,1,1)).to_pytimedelta(),
-        CH4flux_resampled,c='red',label='Saline obs',linestyle='--')
+        CH4flux_resampled,c='red',label='Saline obs (EC)',linestyle='--')
 
-a[1].set(title='Methane flux',xlabel='Time',ylabel='Methane flux ($\mu$mol m$^{-2}$ s$^{-1}$)',ylim=(-0.001,0.005))
-a[1].legend()
+a[1].plot(fresh['time'][0].item()+(DeMott_saline1.set_index('date').index-datetime.datetime(2021,1,1)).to_pytimedelta(),
+        DeMott_saline1['CH4_flux']*1e-3,c='red',label=None,linestyle='None',marker='o')
+a[1].plot(fresh['time'][0].item()+(DeMott_saline2.set_index('date').index-datetime.datetime(2020,1,1)).to_pytimedelta(),
+        DeMott_saline2['CH4_flux']*1e-3,c='red',label='Saline obs',linestyle='None',marker='o')
+
+
+a[1].set(title='Methane flux',xlabel='Time',ylabel='Methane flux ($\mu$mol m$^{-2}$ s$^{-1}$)',ylim=(-0.001,0.01))
+# a[1].legend(loc='upper left',ncol=2)
 a[1].axhline(0.0,c='k',lw=0.5,ls=':')
 
-(saline['HR']/12.011*1e6).resample(time='7D').mean().sel(time=slice(start,end)).plot(ax=a[2],c='orange',label='Saline')
-(fresh['HR']/12.011*1e6).resample(time='7D').mean().sel(time=slice(start,end)).plot(ax=a[2],c='blue',label='Fresh')
-(saline_plantsal['HR']/12.011*1e6).resample(time='7D').mean().sel(time=slice(start,end)).plot(ax=a[2],c='red',label='Saline + plant response')
+(saline['HR']/12.011*1e6).resample(time=resamp).mean().sel(time=slice(start,end)).plot(ax=a[2],c='orange',label='Saline')
+(fresh['HR']/12.011*1e6).resample(time=resamp).mean().sel(time=slice(start,end)).plot(ax=a[2],c='blue',label='Fresh')
+(saline_plantsal['HR']/12.011*1e6).resample(time=resamp).mean().sel(time=slice(start,end)).plot(ax=a[2],c='red',label='Saline + plant response')
 a[2].set(title='Soil CO$_2$ flux',xlabel='Time',ylabel='CO$_2$ flux ($\mu$mol m$^{-2}$ s$^{-1}$)')
-a[2].legend()
+# a[2].legend()
+# Could add RECO from DeMott chambers, but may need to account for autotrophic respiration
+# a[2].plot(fresh['time'][0].item()+(DeMott_fresh1[DeMott_fresh1['chamber_transparency']=='opaque'].set_index('date').index-datetime.datetime(2021,1,1)).to_pytimedelta(),
+#         DeMott_fresh1[DeMott_fresh1['chamber_transparency']=='opaque']['CO2_flux'],c='blue',label=None,linestyle='None',marker='o')
+# a[2].plot(fresh['time'][0].item()+(DeMott_fresh2[DeMott_fresh2['chamber_transparency']=='opaque'].set_index('date').index-datetime.datetime(2020,1,1)).to_pytimedelta(),
+#         DeMott_fresh2[DeMott_fresh2['chamber_transparency']=='opaque']['CO2_flux'],c='blue',label='Fresh obs',linestyle='None',marker='o')
+# a[2].plot(fresh['time'][0].item()+(DeMott_saline1[DeMott_saline1['chamber_transparency']=='opaque'].set_index('date').index-datetime.datetime(2021,1,1)).to_pytimedelta(),
+#         DeMott_saline1[DeMott_saline1['chamber_transparency']=='opaque']['CO2_flux'],c='red',label=None,linestyle='None',marker='o')
+# a[2].plot(fresh['time'][0].item()+(DeMott_saline2[DeMott_saline2['chamber_transparency']=='opaque'].set_index('date').index-datetime.datetime(2020,1,1)).to_pytimedelta(),
+#         DeMott_saline2[DeMott_saline2['chamber_transparency']=='opaque']['CO2_flux'],c='red',label='Fresh obs',linestyle='None',marker='o')
 
-(saline['DIC_RUNOFF']/12.011*1e6).resample(time='7D').mean().sel(time=slice(start,end)).plot(ax=a[3],c='orange',ls='-')
-(fresh['DIC_RUNOFF']/12.011*1e6).resample(time='7D').mean().sel(time=slice(start,end)).plot(ax=a[3],c='blue',ls='-')
-(saline_plantsal['DIC_RUNOFF']/12.011*1e6).resample(time='7D').mean().sel(time=slice(start,end)).plot(ax=a[3],c='red',ls='-')
+
+(saline['DIC_RUNOFF']/12.011*1e6).resample(time=resamp).mean().sel(time=slice(start,end)).plot(ax=a[3],c='orange',ls='-')
+(fresh['DIC_RUNOFF']/12.011*1e6).resample(time=resamp).mean().sel(time=slice(start,end)).plot(ax=a[3],c='blue',ls='-')
+(saline_plantsal['DIC_RUNOFF']/12.011*1e6).resample(time=resamp).mean().sel(time=slice(start,end)).plot(ax=a[3],c='red',ls='-')
 a[3].set(title='Soil lateral DIC flux',xlabel='Time',ylabel='DIC flux ($\mu$mol C m$^{-2}$ s$^{-1}$)')
 # a[3].legend()
 a[3].set_ylim(bottom=-0.01)
+a[2].set_ylim(bottom=-0.01)
+
+for ax in a:
+    ax.xaxis.set_major_formatter(pltELM.format_nc_time('%b'))
+    ax.set_xlim(-254.15,-52.85)
 
 pltELM.letter_label(a)
 
@@ -244,10 +384,10 @@ WT_nelson=pandas.read_csv('/home/b0u/PIE_porewater_WT_data/knb-lter-pie.568.1/MA
                             parse_dates=[['Date','Time']],na_values='NA')
 marsh_height_nelson={'N201':1.368,'N202':1.360,'N203':1.474,'N204':1.697,'N205':1.812}
 
-porewater1=pandas.read_csv('/home/b0u/PIE_porewater_WT_data/knb-lter-pie.71.6/MAR-PR-Porewater.csv',
-                        parse_dates=['Date'],na_values='NA')
-porewater2=pandas.read_csv('/home/b0u/PIE_porewater_WT_data/knb-lter-pie.34.20/PIE_MP_porewater_2022.csv',
-                        parse_dates=[['YEAR','MONTH','DAY']],na_values='NA')
+# porewater1=pandas.read_csv('/home/b0u/PIE_porewater_WT_data/knb-lter-pie.71.6/MAR-PR-Porewater.csv',
+#                         parse_dates=['Date'],na_values='NA')
+# porewater2=pandas.read_csv('/home/b0u/PIE_porewater_WT_data/knb-lter-pie.34.20/PIE_MP_porewater_2022.csv',
+#                         parse_dates=[['YEAR','MONTH','DAY']],na_values='NA')
 
 marshcol=saline
 f,a=plt.subplots(num='PIE data',clear=True,nrows=3,ncols=4,figsize=(10,4))
@@ -334,12 +474,12 @@ pltELM.letter_label(a)
 
 f,a=plt.subplots(nrows=4,ncols=1,clear=True,num='Tide demo',figsize=(5,9),sharex=True)
 pltELM.plot_vars(saline.isel(time=slice(int(8760/12*6.1),int(8760/12*7.2))),a_contour=a,
-                 vars=['H2OSFC','VWC','salinity','oxygen'],maxdepth=0.45,vmax={'salinity':35})
+                 vars=['H2OSFC','VWC','salinity','oxygen'],maxdepth=0.45,vmax={'salinity':35},WT_thresh=0.85)
 pltELM.letter_label(a)
 WT_slice=WT_obs['2019-06-26':'2019-07-31']
 # Here we are offsetting the observed time series by 9 days because there is some temporal mismatch and this is for purpose of general comparison
 a[0].plot(saline['time'][0].item()+(WT_slice.index+datetime.timedelta(days=9)-datetime.datetime(2019,1,1)).to_pytimedelta(),WT_slice,'k-')
-a[0].legend(labels=['Model','_','Obs'])
+a[0].legend(labels=['Model','__','Obs'])
 
 def save_all_figs(dirname,format='png',**kwargs):
     if not os.path.exists(dirname):

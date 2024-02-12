@@ -34,7 +34,7 @@ def plot_var(vardata,contourax=None,profileax=None,vmax=None,vmin=None,label=Non
         profileax.set_xlim(left=vmin,right=vmax)
 
 
-def plot_vars(data,vars,plotname=None,figsize=(4,4),maxdepth=1.5,vmax={},vmin={},a_contour=None,a_profile=None,profile_color='gray',mean_profile=True,do_snapshots=False,quantiles=[0.1,0.9]):
+def plot_vars(data,vars,plotname=None,figsize=(4,4),maxdepth=1.5,vmax={},vmin={},a_contour=None,a_profile=None,profile_color='gray',mean_profile=True,do_snapshots=False,quantiles=[0.1,0.9],WT_thresh=1.0):
     if a_contour is None and a_profile is None:
         f,a=plt.subplots(num=plotname,clear=True,nrows=len(vars),ncols=2,gridspec_kw={'width_ratios':[1,0.5]},figsize=figsize,squeeze=False)
         a_contour=a[:,0]
@@ -117,7 +117,7 @@ def plot_vars(data,vars,plotname=None,figsize=(4,4),maxdepth=1.5,vmax={},vmin={}
                 vmax_FeOxide=vmax['FeOxide']
             else:
                 vmax_FeOxide=FeOxide.max().compute()
-            plot_var(FeOxide,contourax,profileax,vmax=vmax_FeOxide,label='Fe oxide concentration\n(mol Fe/m$^3$)',
+            plot_var(FeOxide,contourax,profileax,vmax=vmax_FeOxide,vmin=vmin.get('FeOxide',FeOxide.max().compute()),label='Fe oxide concentration\n(mol Fe/m$^3$)',
                      snapshots=snapshots,profile_color=profile_color,mean_profile=mean_profile,quantiles=quantiles,
                      maxdepth=maxdepth,title='Fe oxide concentration',axlabel='Fe oxide (mol Fe/m$^3$)')
         elif var=='FeS':
@@ -167,47 +167,53 @@ def plot_vars(data,vars,plotname=None,figsize=(4,4),maxdepth=1.5,vmax={},vmin={}
             plot_var((data['TSOI'].squeeze().T[:10,:]-273.15),contourax,profileax,label='Temperature (C)',
                      snapshots=snapshots,profile_color=profile_color,mean_profile=mean_profile,quantiles=quantiles,
                      maxdepth=maxdepth,title='Soil temperature',axlabel='Temperature (C)')
-        elif var=='NPP' or var=='GPP' or var=='NEE':
-            (data[var].squeeze()/12e-6).plot(ax=contourax)
-            contourax.set(title=var,ylabel=var+'\n($\mu$ mol m$^{-2}$ s$^{-1}$)',xlabel='Time (year)')
-            if profileax is not None:
-                profileax.set_visible(False)
-        elif var=='TOTVEGC':
-            (data[var].squeeze()).plot(ax=contourax)
-            contourax.set(title='Total vegetation biomass C',ylabel='Biomass C\n(g C m$^{-2}$ s$^{-1}$)',xlabel='Time (year)')
-            if profileax is not None:
-                profileax.set_visible(False)
-        elif var=='H2OSFC':
-            H2OSFC=data['H2OSFC'].squeeze()*1e-3
-            ZWT=data['ZWT'].squeeze()
-            (H2OSFC.where(H2OSFC>0,-ZWT)).plot(ax=contourax)
-            contourax.set(title='Water level',ylabel='Water level (m)',xlabel='Time (year)')
-            contourax.axhline(0.0,c='k',lw=0.5,ls=':')
-            if profileax is not None:
-                profileax.set_visible(False)
-        elif var=='H2OSFC_tide':
-            (data[var].squeeze()*1e-3).plot(ax=contourax)
-            contourax.set(title='Tide water level',ylabel='Water level (m)',xlabel='Time (year)')
-            if profileax is not None:
-                profileax.set_visible(False)
-            contourax.axhline(0.0,c='k',lw=0.5,ls=':')
-        elif var=='latflow':
-            (data['QFLX_LAT_AQU'].squeeze()).plot(ax=contourax)
-            contourax.set(title='Lateral water flow into column',xlabel='Time',ylabel='Water flow rate\n(mm s$^{-1}$)')
-            if profileax is not None:
-                profileax.set_visible(False)
-            contourax.axhline(0.0,c='k',lw=0.5,ls=':')
-        elif var=='drain':
-            (data['QDRAI'].squeeze()).plot(ax=contourax)
-            contourax.set(title='Drainage flow',xlabel='Time',ylabel='Water flow rate\n(mm s$^{-1}$)')
-            if profileax is not None:
-                profileax.set_visible(False)
-            contourax.axhline(0.0,c='k',lw=0.5,ls=':')
-        elif var=='CH4flux':
-            (data['CH4FLUX_ALQUIMIA'].squeeze()/12.011*1e6).plot(ax=contourax)
-            if profileax is not None:
-                profileax.set_visible(False)
-            contourax.set(title='Methane flux',xlabel='Time',ylabel='Methane flux ($\mu$mol m$^{-2}$ s$^{-1}$)')
+        if contourax is not None:
+            if var=='NPP' or var=='GPP' or var=='NEE':
+                (data[var].squeeze()/12e-6).plot(ax=contourax)
+                contourax.set(title=var,ylabel=var+'\n($\mu$ mol m$^{-2}$ s$^{-1}$)',xlabel='Time (year)')
+                if profileax is not None:
+                    profileax.set_visible(False)
+            elif var=='TOTVEGC':
+                (data[var].squeeze()).plot(ax=contourax)
+                contourax.set(title='Total vegetation biomass C',ylabel='Biomass C\n(g C m$^{-2}$ s$^{-1}$)',xlabel='Time (year)')
+                if profileax is not None:
+                    profileax.set_visible(False)
+            elif var=='H2OSFC':
+                H2OSFC=data['H2OSFC'].squeeze()*1e-3
+                # ZWT=data['ZWT'].squeeze()
+                VWC=(data['H2OSOI']/data['watsat']).T.squeeze()[:10,:]
+                lev1=(VWC>=WT_thresh).argmax(dim='levgrnd').compute()
+                lev2=lev1.where(lev1==0,lev1-1).compute()
+                ZWT=(data['levgrnd'][lev2]+(data['levgrnd'][lev1]-data['levgrnd'][lev2])/(VWC[lev1]-VWC[lev2])*(WT_thresh-VWC[lev2])).where(lev1>0,0.0)
+
+                (H2OSFC.where(H2OSFC>0,-ZWT)).plot(ax=contourax)
+                contourax.set(title='Water level',ylabel='Water level (m)',xlabel='Time (year)')
+                contourax.axhline(0.0,c='k',lw=0.5,ls=':')
+                if profileax is not None:
+                    profileax.set_visible(False)
+            elif var=='H2OSFC_TIDE':
+                (data[var].squeeze()*1e-3).plot(ax=contourax)
+                contourax.set(title='Tide water level',ylabel='Water level (m)',xlabel='Time (year)')
+                if profileax is not None:
+                    profileax.set_visible(False)
+                contourax.axhline(0.0,c='k',lw=0.5,ls=':')
+            elif var=='latflow':
+                (data['QFLX_LAT_AQU'].squeeze()).plot(ax=contourax)
+                contourax.set(title='Lateral water flow into column',xlabel='Time',ylabel='Water flow rate\n(mm s$^{-1}$)')
+                if profileax is not None:
+                    profileax.set_visible(False)
+                contourax.axhline(0.0,c='k',lw=0.5,ls=':')
+            elif var=='drain':
+                (data['QDRAI'].squeeze()).plot(ax=contourax)
+                contourax.set(title='Drainage flow',xlabel='Time',ylabel='Water flow rate\n(mm s$^{-1}$)')
+                if profileax is not None:
+                    profileax.set_visible(False)
+                contourax.axhline(0.0,c='k',lw=0.5,ls=':')
+            elif var=='CH4flux':
+                (data['CH4FLUX_ALQUIMIA'].squeeze()/12.011*1e6).plot(ax=contourax)
+                if profileax is not None:
+                    profileax.set_visible(False)
+                contourax.set(title='Methane flux',xlabel='Time',ylabel='Methane flux ($\mu$mol m$^{-2}$ s$^{-1}$)')
         
         if((data['time'][-1].item()-data['time'][0].item()).days<365 and contourax is not None):
             contourax.xaxis.set_major_formatter(format_nc_time('%b-%d'))
@@ -230,13 +236,13 @@ def letter_label(a):
             num = num + 1
 
 if __name__ == '__main__':
-    data=xarray.open_mfdataset(sys.argv[1:])
+    data=xarray.open_mfdataset(sys.argv[1:]).isel(lndgrid=1)
 
     plot_vars(data,plotname='Water and oxygen',vars=['VWC','O2','frozen','temperature'],figsize=(6,8.5),maxdepth=2.2,vmax={'vertflow':1e-1})
     plot_vars(data,plotname='Carbon',vars=['soilC','DOC','DIC','CH4'],figsize=(6,8.5),vmax={'DOC':10.0,'DIC':10.0},maxdepth=2.2)
     plot_vars(data,plotname='Redox',vars=['Fe2','FeOxide','Sulfate','Sulfide','pH'],figsize=(6,8.5),maxdepth=2.2,vmax={'pH':9.0})
     plot_vars(data,plotname='Hydro',vars=['H2OSFC','salinity','drain','latflow'])
-
+    (data['H2OSFC_TIDE']/1000).plot(ax=plt.figure('Hydro').axes[0],c='k',ls='--')
 
     f,a=plt.subplots(num='Carbon time series',clear=True,nrows=3)
     # (data['TOTSOMC']/1000).plot(ax=a[0],label='Total SOM C')

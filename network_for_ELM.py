@@ -148,7 +148,7 @@ def make_aqueous_network(
         DOM_CN=20.0,
         # Eact = 5e4 gives Q10 ~ 2
         Eact=5e4,Eact_methane=8e4,Eact_sulfatered=8e4, # PFLOTRAN uses Arrhenius equation, Eact in units of J/mol, T0=25 C: Arr(T[C])=exp(Eact/8.314*(1/298.15-1/(T+273.15)))
-        init_FeOxide=0.0,FeS_rate=0.0,init_FeSulfide=0.0,
+        init_FeOxide=0.0,FeS_rate=0.0,init_FeSulfide=0.0,FeOxide_rate=1e-10,
         DOM_Fe_content=0.5e-3, # May be high, Breteler et al. (1981) found more like 6e-5 in spartina leaf litter which is an order of magnitude lower.
         DOM_sulfur_content = 0.01,
                                 ):
@@ -229,9 +229,9 @@ def make_aqueous_network(
                 decomp_network.decomp_pool(name='FeIIIDOM1(aq)',kind='secondary'),
                 decomp_network.decomp_pool(name='FeIIDOM1(aq)',kind='secondary'),
                 # Specifying SSA on mass basis messes up repeated constraint equilibration for some reason
-                decomp_network.decomp_pool(name='Fe(OH)3',rate='1.d-10 mol/m^2-sec',constraints={'initial':f'{init_FeOxide*0:1.4g}  1000.0 m^2/m^3'},kind='mineral'),  
+                decomp_network.decomp_pool(name='Fe(OH)3',rate=f'{FeOxide_rate:1.4g} mol/m^2-sec',constraints={'initial':f'{init_FeOxide*0:1.4g}  1000.0 m^2/m^3'},kind='mineral'),  
                 # Luther et al (1982) suggests that iron oxides in salt marsh sediments are mostly goethite
-                decomp_network.decomp_pool(name='Goethite',rate='1.d-13 mol/m^2-sec',constraints={'initial':f'{init_FeOxide*1.0:1.4g}  1000.0 m^2/m^3'},kind='mineral'),  
+                decomp_network.decomp_pool(name='Goethite',rate=f'{FeOxide_rate*1e-3:1.4g} mol/m^2-sec',constraints={'initial':f'{init_FeOxide*1.0:1.4g}  1000.0 m^2/m^3'},kind='mineral'),  
 
                 decomp_network.decomp_pool(name='CH4(aq)',kind='primary',constraints={'initial':'1900e-9 G CH4(g)'}), # ~1900 ppb atmospheric concentration https://gml.noaa.gov/ccgg/trends_ch4/
                 decomp_network.decomp_pool(name='CH4(g)',kind='gas'),
@@ -438,9 +438,10 @@ def make_aqueous_network(
         if sulfate:
                 reactions.extend([
                         # Iversen and Jorgensen (1985) found sulfate reduction up to 60 nmol/cm3/day
+                        # In first manuscript draft rate constant was 5e-9. Consider increasing to ~1e-8 because modeled sulfide is very low
                         decomp_network.reaction(name='Sulfate reduction',reactant_pools={'Acetate-':1.0,'SO4--':1.0,'H+':2},
                                 product_pools={'CO2(aq)':2.0,'HS-':1.0},
-                                rate_constant=5e-9,reactiontype='MICROBIAL',activation_energy=Eact_sulfatered,
+                                rate_constant=5e-8,reactiontype='MICROBIAL',activation_energy=Eact_sulfatered,
                                 monod_terms=[decomp_network.monod(species='Acetate-',k=acetate_scale,threshold=1.1e-15),
                                                 decomp_network.monod(species='SO4--',k=sulfate_scale),
                                                 decomp_network.monod(species='H+',k=1e-6)],
@@ -493,7 +494,7 @@ def make_aqueous_network(
                         # Iversen et al 1985 found rates around 20 nmol/cm3/day
                         reactions.extend([   decomp_network.reaction(name='Methane oxidation (SO4)',stoich='1.0 CH4(aq)  + 1.0 SO4-- + 1.0 H+ -> 1.0 CO2(aq)  + 1.0 HS- + 2.0 H2O ',
                                             monod_terms=[decomp_network.monod(species='SO4--',k=sulfate_scale,threshold=thresh),decomp_network.monod(species='CH4(aq)',k=CH4_scale,threshold=thresh)],
-                                        rate_constant=3e-10,reactiontype='MICROBIAL',activation_energy=Eact,),])
+                                        rate_constant=1e-9,reactiontype='MICROBIAL',activation_energy=Eact,),])
 
                 if Fe:
                         reactions.extend([   decomp_network.reaction(name='Methane oxidation (Fe)',stoich='1.0 CH4(aq)  + 8.0 Fe+++ + 2.0 H2O -> 1.0 CO2(aq)  + 8.0 Fe++ + 8.0 H+ ',
@@ -526,29 +527,28 @@ def oxygen_demand(txt):
 
 decomp_network_ad=make_network()
 decomp_network_notad=make_network(adfactor_soil3=1.0,adfactor_soil4=1.0)
-decomp_network_O2_ad=make_aqueous_network(calcite=False,Fe=True,DOM_scale=0.1,methane=True,FeS_rate=1e-11,init_FeOxide=0.01,init_FeSulfide=0.0)
-decomp_network_O2_notad=make_aqueous_network(adfactor_soil3=1.0,adfactor_soil4=1.0,calcite=False,Fe=True,
-                                                DOM_scale=1e-3,acetate_scale=1e-3,methane=True,FeS_rate=1e-11,init_FeOxide=0.01,init_FeSulfide=0.0)
+decomp_network_O2_ad=make_aqueous_network(calcite=False,Fe=True,DOM_scale=0.1,methane=True,FeS_rate=1e-9,init_FeOxide=0.01,init_FeSulfide=0.0)
+decomp_network_O2_notad=make_aqueous_network(adfactor_soil3=1.0,adfactor_soil4=1.0,calcite=False,Fe=True,N_imm_lim=0.1,anox_ratemod=0.1,
+                                                DOM_scale=0.5e-2,acetate_scale=1e-3,methane=True,FeS_rate=1e-8,init_FeOxide=0.01,FeOxide_rate=1e-8,init_FeSulfide=0.0)
+decomp_network_O2_lowFe_notad=make_aqueous_network(adfactor_soil3=1.0,adfactor_soil4=1.0,calcite=False,Fe=True,N_imm_lim=0.1,anox_ratemod=0.1,
+                                                DOM_scale=0.5e-2,acetate_scale=1e-3,methane=True,FeS_rate=1e-8,init_FeOxide=0.01,FeOxide_rate=1e-10,init_FeSulfide=0.0)
+
 
 decomp_network_arctic_ad=make_aqueous_network(calcite=False,Fe=True,methane=True,sulfate=True,DOM_scale=0.1,init_FeOxide=0.01)
 decomp_network_arctic=make_aqueous_network(calcite=False,Fe=True,methane=True,sulfate=True,adfactor_soil4=1.0,adfactor_soil3=1.0,init_FeOxide=0.01)
 
 
-def load_state_from_logfile(filename,skip=1):
+def load_state_from_logfile(filename):
         lines=[]
         skipped=0
         with open(filename) as f:
-                for line in f:
+                lines=f.readlines()
+                for line in reversed(range(len(lines))):
                         # if line.strip() == 'Alquimia primary species (mol/m3 bulk):':
-                        if line.strip() == 'Alquimia aux doubles:':
-                                if skipped >= skip:
-                                        lines=f.readlines()
-                                        break
-                                else:
-                                        skipped += 1
+                        if lines[line].strip() == 'Alquimia aux doubles:':
+                                return lines[line:]
                 else:
                         raise ValueError('No alquimia state printout found')
-        return lines
 
 
 def str_to_alquimia(inputfile,state_text,temperature=20.0):
@@ -592,6 +592,8 @@ def str_to_alquimia(inputfile,state_text,temperature=20.0):
                         l=line.split()
                         if len(l)>2:
                                 data.aux_data.aux_doubles.data[int(l[2])-1]=float(l[3])
+                elif 'ENDRUN' in line:
+                        break
                 else:
                         l=line.split()
                         if len(l)>0 and l[1] in pools:
@@ -652,24 +654,29 @@ if __name__=='__main__':
         # Write out input deck
         decomp_network.PF_network_writer(decomp_network_ad,precision=8).write_into_input_deck('SOMdecomp_template.txt','ELM_decks/CTC_alquimia_forELM_adspinup.in',
                 CO2name='CO2(aq)',log_formulation=True,SOMdecomp_Q10=1.5,moisturefunc='LOGTHETA',database='hanford.dat',
-                chem_args={'MAX_RESIDUAL_TOLERANCE':.5e-13,'MAX_RELATIVE_CHANGE_TOLERANCE':1e-10}
+                chem_args={'MAX_RESIDUAL_TOLERANCE':1e-13,'MAX_RELATIVE_CHANGE_TOLERANCE':1e-10}
                 )
 
         decomp_network.PF_network_writer(decomp_network_notad,precision=8).write_into_input_deck('SOMdecomp_template.txt','ELM_decks/CTC_alquimia_forELM.in',
                 CO2name='CO2(aq)',log_formulation=True,SOMdecomp_Q10=1.5,moisturefunc='LOGTHETA',database='hanford.dat',
-                chem_args={'MAX_RESIDUAL_TOLERANCE':.5e-13,'MAX_RELATIVE_CHANGE_TOLERANCE':1e-10}
+                chem_args={'MAX_RESIDUAL_TOLERANCE':1e-13,'MAX_RELATIVE_CHANGE_TOLERANCE':1e-10}
                 )
 
 
         # Write out input deck
         decomp_network.PF_network_writer(decomp_network_O2_ad,precision=8).write_into_input_deck('SOMdecomp_template.txt','ELM_decks/CTC_alquimia_forELM_O2consuming_adspinup.in',
                 CO2name='CO2(aq)',log_formulation=True,SOMdecomp_Q10=1.5,moisturefunc='LOGTHETA',database='hanford.dat',
-                chem_args={'MAX_RESIDUAL_TOLERANCE':.5e-13,'MAX_RELATIVE_CHANGE_TOLERANCE':1e-10}
+                chem_args={'MAX_RESIDUAL_TOLERANCE':2.0e-13*1,'MAX_RELATIVE_CHANGE_TOLERANCE':1e-10},verbose=True,
                 )
 
         decomp_network.PF_network_writer(decomp_network_O2_notad,precision=8).write_into_input_deck('SOMdecomp_template.txt','ELM_decks/CTC_alquimia_forELM_O2consuming.in',
                 CO2name='CO2(aq)',log_formulation=True,SOMdecomp_Q10=1.5,moisturefunc='LOGTHETA',database='hanford.dat',
-                chem_args={'MAX_RESIDUAL_TOLERANCE':.5e-13,'MAX_RELATIVE_CHANGE_TOLERANCE':1e-10}
+                chem_args={'MAX_RESIDUAL_TOLERANCE':5.0e-13*2,'MAX_RELATIVE_CHANGE_TOLERANCE':1e-10},verbose=True,
+                )
+        
+        decomp_network.PF_network_writer(decomp_network_O2_lowFe_notad,precision=8).write_into_input_deck('SOMdecomp_template.txt','ELM_decks/CTC_alquimia_forELM_O2consuming_lowFe.in',
+                CO2name='CO2(aq)',log_formulation=True,SOMdecomp_Q10=1.5,moisturefunc='LOGTHETA',database='hanford.dat',
+                chem_args={'MAX_RESIDUAL_TOLERANCE':5.0e-13*2,'MAX_RELATIVE_CHANGE_TOLERANCE':1e-10},verbose=True,
                 )
 
         # Write out input deck
