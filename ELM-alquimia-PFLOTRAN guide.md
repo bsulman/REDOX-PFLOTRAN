@@ -40,7 +40,7 @@ You can of course organize these codes however you want, as long as you make sur
             BLASLAPACK_LIBDIR=/software/dev_tools/swtree/cs400_centos7.2_pe2016-08/mkl/2017/centos7.2_gnu5.3.0/lib
 
             # Make this your actual PFLOTRAN dir
-            export PFLOTRAN_DIR=$HOME/ELM-alquimia/pflotran-elm-interface/src/pflotran
+            export PFLOTRAN_DIR=/nfs/data/ccsi/proj-shared/b0u/ELM-PFLOTRAN
             export CLM_PFLOTRAN_SOURCE_DIR=$PFLOTRAN_DIR
 
             export PETSC_DIR=/software/user_tools/current/cades-ccsi/petsc-x
@@ -49,7 +49,7 @@ You can of course organize these codes however you want, as long as you make sur
     
         Close and reopen your terminal after making these edits so they will take effect.
 
-    * Install PFLOTRAN
+    * Install PFLOTRAN [OPTIONAL since PFLOTRAN chemistry library is now located at /nfs/data/ccsi/proj-shared/b0u/ELM-PFLOTRAN]
         
             cd $HOME/ELM-alquimia
             git clone https://github.com/bsulman/pflotran-elm-interface.git
@@ -75,6 +75,7 @@ You can of course organize these codes however you want, as long as you make sur
                 git clone --recursive https://github.com/bsulman/REDOX-PFLOTRAN.git
 
                 # Build alquimia interface
+                # OPTIONAL since library is also now located at /nfs/data/ccsi/proj-shared/b0u/ELM-PFLOTRAN/alquimia
                 # Note, this step will fail if environment variables PETSC_DIR and PETSC_ARCH are not correct
                 cd REDOX-PFLOTRAN/alquimia
                 mkdir build
@@ -97,18 +98,14 @@ You can of course organize these codes however you want, as long as you make sur
     *	Install Offline Model Testbed (OLMT) and check out alquimia branch:
 
             cd $HOME/ELM-alquimia
-            git clone https://github.com/dmricciuto/OLMT.git
-            cd OLMT
-            git checkout bsulman/coastal_main
+            git clone -b bsulman/coastal_main https://github.com/dmricciuto/OLMT.git
 
     
     *	Clone/checkout correct ELM code:
 
             cd $HOME/ELM-alquimia
-            git clone -b coastal_main_rebase --recurse-submodules git@github.com:bsulman/E3SM.git
+            git -c http.sslVerify=false -c url."https://github.com/".insteadOf="git@github.com:" clone -b bsulman/lnd/tidal_multigrid --recurse-submodules https://github.com/bsulman/E3SM.git
 
-
-        Note: To clone the E3SM code, you will need to have a Github account that is connected to an ssh key on the computer you are cloning to. See directions here: https://docs.github.com/en/authentication/connecting-to-github-with-ssh/adding-a-new-ssh-key-to-your-github-account?platform=linux
 
 
 2.	Generate PFLOTRAN input decks:
@@ -132,7 +129,28 @@ You can of course organize these codes however you want, as long as you make sur
         cd $HOME/ELM-alquimia/OLMT
         mkdir -p ~/cases
         
-        python site_fullrun.py --site US-PHM --caseidprefix test_alquimia  --nyears_ad_spinup 100 --nyears_final_spinup 50 --tstep 1 --cpl_bypass --machine cades --no_dynroot --spinup_vars --sitegroup Wetland --gswp3 --nyears_transient 51 --nofire --model_root $HOME/ELM-alquimia/E3SM --nopftdyn --ccsm_input /nfs/data/ccsi/proj-shared/E3SM/inputdata --caseroot ~/cases --runroot /lustre/or-scratch/cades-ccsi/$USER/  --mpilib openmpi --pio_version 2 --hist_nhtfrq_trans -24 --hist_mfilt_trans 365 --hist_mfilt_spinup 12 --hist_nhtfrq_spinup 0 --cn_only --alquimia $HOME/ELM-alquimia/REDOX-PFLOTRAN/ELM_decks/CTC_alquimia_forELM_O2consuming.in --alquimia_ad $HOME/ELM-alquimia/REDOX-PFLOTRAN/ELM_decks/CTC_alquimia_forELM_O2consuming_adspinup.in --trans_varlist "TOTVEGC,TOTSOMC,TOTLITC,soil_O2,HR,GPP,NEE,SMINN,SMINN_TO_PLANT,DIC_vr,SIC_vr,H2OSOI,watsat,SOIL1C_vr,SOIL2C_vr,SOIL3C_vr,SOIL4C_vr,LITR1C_vr,LITR2C_vr,LITR3C_vr,DOC_vr,soil_Fe2,soil_FeOxide,soil_pH,soil_sulfate,soil_sulfide,CH4_vr,chem_dt,SOILLIQ,SOILICE,QFLX_ADV,CH4FLUX_ALQUIMIA"
+        site=beo
+        metdir=/nfs/data/ccsi/proj-shared/E3SM/pt-e3sm-inputdata/atm/datm7/GSWP3_daymet/cpl_bypass_$site
+        domain=/nfs/data/ccsi/proj-shared/b0u/NGEE_ELM/BEO_domain_multicell.nc
+        surf=/nfs/data/ccsi/proj-shared/b0u/NGEE_ELM/BEO_surfdata_multicell.nc
+        varlist="TOTVEGC,TOTSOMC,TOTLITC,SOIL1C_vr,SOIL2C_vr,SOIL3C_vr,SOIL4C_vr,LITR1C_vr,LITR2C_vr,LITR3C_vr,LEAFC,\
+        soil_O2,HR,GPP,NEE,NPP,SMINN,SMINN_TO_PLANT,DIC_vr,SIC_vr,H2OSOI,H2OSFC,SOILLIQ,SOILICE,ZWT,QFLX_ADV,\
+        QFLX_LAT_AQU,QFLX_EVAP_TOT,QVEGT,watsat,chem_dt,soil_salinity,SALINITY,soil_pH,DOC_vr,DIC_vr,DOC_RUNOFF,DIC_RUNOFF,SMIN_NO3_RUNOFF,\
+        soil_sulfate,soil_sulfide,CH4_vr,CH4FLUX_ALQUIMIA,QDRAI,QDRAI_VR,H2OSFC_TIDE,TSOI,soil_Fe2,soil_FeOxide,soil_FeS"
+        python site_fullrun.py --site AK-BEO --sitegroup NGEEArctic --caseidprefix Alaska_alquimia_7cell  \
+                       --nyears_ad_spinup 100 --nyears_final_spinup 100 --tstep 1 --nyears_transient 151 \
+                       --cpl_bypass --machine cades --no_dynroot --spinup_vars --gswp3 --daymet4 --nofire --nopftdyn --nopointdata \
+                       --model_root /home/b0u/models/E3SM_main --ccsm_input /nfs/data/ccsi/proj-shared/E3SM/pt-e3sm-inputdata \
+                       --metdir $metdir \
+                       --domainfile $domain \
+                       --surffile $surf --np 7 \
+                       --caseroot ~/cases --runroot /lustre/or-scratch/cades-ccsi/$USER/  --mpilib openmpi --pio_version 2 \
+                       --hist_nhtfrq_trans -1 --hist_mfilt_trans 8760 --hist_mfilt_spinup 0 --hist_nhtfrq_spinup 12 --cn_only \
+                       --trans_varlist $varlist \
+                       --alquimia $HOME/ELM-alquimia/REDOX-PFLOTRAN/ELM_decks/CTC_alquimia_forELM_O2consuming.in \
+                       --alquimia_ad $HOME/ELM-alquimia/REDOX-PFLOTRAN/ELM_decks/CTC_alquimia_forELM_O2consuming_adspinup.in \
+                       --marsh --tide_forcing_file /nfs/data/ccsi/proj-shared/b0u/NGEE_ELM/BEO_hydro_BC_multicell.nc \
+                       --parm_file /nfs/data/ccsi/proj-shared/b0u/NGEE_ELM/parms_BEO.txt
 
     This should compile ELM and run a simulation with coupler bypass and alquimia turned on, using the expanded reaction network with oxygen, DOM, and iron, going through accelerated spinup, normal spinup, and historical simulations. It will run significantly slower than a normal ELM simulation.
     
