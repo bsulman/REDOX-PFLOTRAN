@@ -169,12 +169,12 @@ def plot_vars(data,vars,plotname=None,figsize=(4,4),maxdepth=1.5,vmax={},vmin={}
                      maxdepth=maxdepth,title='Soil temperature',axlabel='Temperature (C)')
         if contourax is not None:
             if var=='NPP' or var=='GPP' or var=='NEE':
-                (data[var].squeeze()/12e-6).plot(ax=contourax)
+                (data[var].squeeze()/12e-6).plot(ax=contourax,c=profile_color)
                 contourax.set(title=var,ylabel=var+'\n($\mu$ mol m$^{-2}$ s$^{-1}$)',xlabel='Time (year)')
                 if profileax is not None:
                     profileax.set_visible(False)
             elif var=='TOTVEGC':
-                (data[var].squeeze()).plot(ax=contourax)
+                (data[var].squeeze()).plot(ax=contourax,c=profile_color)
                 contourax.set(title='Total vegetation biomass C',ylabel='Biomass C\n(g C m$^{-2}$ s$^{-1}$)',xlabel='Time (year)')
                 if profileax is not None:
                     profileax.set_visible(False)
@@ -186,7 +186,7 @@ def plot_vars(data,vars,plotname=None,figsize=(4,4),maxdepth=1.5,vmax={},vmin={}
                 lev2=lev1.where(lev1==0,lev1-1).compute()
                 ZWT=(data['levgrnd'][lev2]+(data['levgrnd'][lev1]-data['levgrnd'][lev2])/(VWC[lev1]-VWC[lev2])*(WT_thresh-VWC[lev2])).where(lev1>0,0.0)
 
-                (H2OSFC.where(H2OSFC>0,-ZWT)).plot(ax=contourax)
+                (H2OSFC.where(H2OSFC>0,-ZWT)).plot(ax=contourax,c=profile_color)
                 contourax.set(title='Water level',ylabel='Water level (m)',xlabel='Time (year)')
                 contourax.axhline(0.0,c='k',lw=0.5,ls=':')
                 if profileax is not None:
@@ -210,7 +210,7 @@ def plot_vars(data,vars,plotname=None,figsize=(4,4),maxdepth=1.5,vmax={},vmin={}
                     profileax.set_visible(False)
                 contourax.axhline(0.0,c='k',lw=0.5,ls=':')
             elif var=='CH4flux':
-                (data['CH4FLUX_ALQUIMIA'].squeeze()/12.011*1e6).plot(ax=contourax)
+                (data['CH4FLUX_ALQUIMIA'].squeeze()/12.011*1e6).plot(ax=contourax,c=profile_color)
                 if profileax is not None:
                     profileax.set_visible(False)
                 contourax.set(title='Methane flux',xlabel='Time',ylabel='Methane flux ($\mu$mol m$^{-2}$ s$^{-1}$)')
@@ -236,7 +236,7 @@ def letter_label(a):
             num = num + 1
 
 if __name__ == '__main__':
-    data=xarray.open_mfdataset(sys.argv[1:]).isel(lndgrid=1)
+    data=xarray.open_mfdataset(sys.argv[1:]).isel(lndgrid=3)
 
     plot_vars(data,plotname='Water and oxygen',vars=['VWC','O2','frozen','temperature'],figsize=(6,8.5),maxdepth=2.2,vmax={'vertflow':1e-1})
     plot_vars(data,plotname='Carbon',vars=['soilC','DOC','DIC','CH4'],figsize=(6,8.5),vmax={'DOC':10.0,'DIC':10.0},maxdepth=2.2)

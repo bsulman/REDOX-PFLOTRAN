@@ -165,7 +165,7 @@ You can of course organize these codes however you want, as long as you make sur
 
         cd $HOME/ELM-alquimia/REDOX-PFLOTRAN
         conda activate myconda
-        python plot_ELM_alquimia_result.py /lustre/or-scratch/cades-ccsi/$USER/test_alquimia_US-PHM_ICB20TRCNRDCTCBC/run/test_alquimia*.h0.188?-02-01-00000.nc
+        python plot_ELM_alquimia_result.py /lustre/or-scratch/cades-ccsi/$USER/test_alquimia_US-PHM_ICB20TRCNRDCTCBC/run/Alaska_alquimia_7cell_AK-BEO_ICB20TRCNRDCTCBC.h0.188?-02-01-00000.nc
 
     This script plots several figures on the screen so you will need to be logged into CADES with X-11 forwarding turned on (`ssh -X` ...).
     Figures:
