@@ -140,7 +140,7 @@ You can of course organize these codes however you want, as long as you make sur
         python site_fullrun.py --site AK-BEO --sitegroup NGEEArctic --caseidprefix Alaska_alquimia_7cell  \
                        --nyears_ad_spinup 100 --nyears_final_spinup 100 --tstep 1 --nyears_transient 151 \
                        --cpl_bypass --machine cades --no_dynroot --spinup_vars --gswp3 --daymet4 --nofire --nopftdyn --nopointdata \
-                       --model_root /home/b0u/models/E3SM_main --ccsm_input /nfs/data/ccsi/proj-shared/E3SM/pt-e3sm-inputdata \
+                       --model_root $HOME/ELM-alquimia/E3SM --ccsm_input /nfs/data/ccsi/proj-shared/E3SM/pt-e3sm-inputdata \
                        --metdir $metdir \
                        --domainfile $domain \
                        --surffile $surf --np 7 \
