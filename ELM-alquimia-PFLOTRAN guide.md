@@ -82,7 +82,7 @@ You can of course organize these codes however you want, as long as you make sur
                 cd build
                 export PETSC_DIR=/software/user_tools/current/cades-ccsi/petsc-x/openmpi-1.10-gcc-5.3
                 PETSC_ARCH='' cmake .. \
-                -DCMAKE_INSTALL_PREFIX=. \
+                -DCMAKE_INSTALL_PREFIX=/nfs/data/ccsi/proj-shared/b0u/ELM-PFLOTRAN/alquimia \
                 -DCMAKE_C_COMPILER=$OPENMPI_DIR/bin/mpicc \
                 -DCMAKE_CXX_COMPILER=$OPENMPI_DIR/bin/mpicxx \
                 -DCMAKE_Fortran_COMPILER=$OPENMPI_DIR/bin/mpif90 \
@@ -165,7 +165,7 @@ You can of course organize these codes however you want, as long as you make sur
 
         cd $HOME/ELM-alquimia/REDOX-PFLOTRAN
         conda activate myconda
-        python plot_ELM_alquimia_result.py /lustre/or-scratch/cades-ccsi/$USER/test_alquimia_US-PHM_ICB20TRCNRDCTCBC/run/Alaska_alquimia_7cell_AK-BEO_ICB20TRCNRDCTCBC.h0.188?-02-01-00000.nc
+        python plot_ELM_alquimia_result.py /lustre/or-scratch/cades-ccsi/$USER/Alaska_alquimia_7cell_AK-BEO_ICB20TRCNRDCTCBC/run/Alaska_alquimia_7cell_AK-BEO_ICB20TRCNRDCTCBC.h0.188?-02-01-00000.nc
 
     This script plots several figures on the screen so you will need to be logged into CADES with X-11 forwarding turned on (`ssh -X` ...).
     Figures:
