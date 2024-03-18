@@ -800,11 +800,11 @@ def setup_sims():
     Ndeps=   [0,50,150,0,50,150,0,50,150]
     warmings=[0, 0,  0,2,2,  2, 5,5 ,5] # Degrees C
 
-    pHs=numpy.arange(4.0,6.5,0.5)
+    pHs=numpy.arange(4.0,7.0,0.5)
     # pHs=[4.5,6.0]
     # anox_freqs=[12,8,4,1] # anoxic events per year
     anox_freqs=[50] # ~ weekly anoxic periods
-    anox_lengths=[0.25,0.5,2]
+    anox_lengths=[0.05,0.1,0.25,0.5,2]
     birn_rates=1e-12*2.0**numpy.arange(-2,8,2)
 
     Ndep_sims=[]
@@ -833,12 +833,13 @@ def setup_sims():
                 birnrate_sims.append(birn_rate)
 
     for anox_len in anox_lengths:
-        Ndep_sims.append(0)
-        warming_sims.append(0)
-        anox_freq_sims.append(50)
-        anox_len_sims.append(anox_len)
-        pH_sims.append(pHs[2])
-        birnrate_sims.append(birn_rates[2])
+        for pH in pHs[[0,2,4]]:
+            Ndep_sims.append(0)
+            warming_sims.append(0)
+            anox_freq_sims.append(50)
+            anox_len_sims.append(anox_len)
+            pH_sims.append(pH)
+            birnrate_sims.append(birn_rates[2])
 
     return pandas.DataFrame({'Ndep':Ndep_sims,'warming':warming_sims,'anox_freq':anox_freq_sims,'anox_len':anox_len_sims,'pH':pH_sims,'birn_rate':birnrate_sims})
 

@@ -122,7 +122,7 @@ def load_data(filenames,chunks={},readgroups=False):
     if not x.any():
         raise ValueError('No simulations meet criteria for alldata')
     alldata=xarray.combine_by_coords(data_list[xx] for xx in np.nonzero(x)[0])
-    x=(Ndep_sims==0)&(warming_sims==0)&(birnrate_sims.round(5)==4.0)&(pH_sims==5.0)
+    x=(Ndep_sims==0)&(warming_sims==0)&(birnrate_sims.round(5)==4.0)&((pH_sims==5.0)|(pH_sims==4.0)|(pH_sims==6.0))
     if not x.any():
         raise ValueError('No simulations meet criteria for redoxdata')
     redoxdata=xarray.combine_by_coords(data_list[xx] for xx in np.nonzero(x)[0])
@@ -138,16 +138,19 @@ def getdata(soil_pH,Ndep,warming,redox_cycles=50,anox_lenscale=0.5):
     # return data_list[flatnonzero((pH_sims==soil_pH)&(Ndep_sims==Ndep)&(warming_sims==warming)&(anox_freq_sims==redox_cycles)&(anox_len_sims==anox_lenscale))[0]].squeeze()
     return alldata.sel(soil_pH=soil_pH,Ndep=Ndep,warming=warming,anox_lenscales=anox_lenscale,redox_cycles=redox_cycles)
 
-def save_one_fig(f,dirname=figdir,format='png',**kwargs):
+def save_one_fig(f,dirname=figdir,format='jpg',dpi=300,**kwargs):
     fname_fixed=f.get_label().replace('/','-')
     savename='{dirname:s}/{fname:s}.{format}'.format(dirname=dirname,format=format,fname=fname_fixed)
     print(savename)
-    f.savefig(savename,**kwargs)
+    f.savefig(savename,dpi=dpi,**kwargs)
 
-def letter_label(ax,label=None,x=0.03,y=1.03,title=True,**kwargs):
+def letter_label(ax,label,x=0.03,y=1.03,title=True,**kwargs):
     from string import ascii_lowercase
     if isinstance(label,int):
-        label='('+ascii_lowercase[label]+')'
+        if label <= 25:
+            label='('+ascii_lowercase[label]+')'
+        else:
+            label='('+ascii_lowercase[label//26-1]+ascii_lowercase[label%26]+')'
     if title:
         return ax.set_title(label,loc='left')
     else:
@@ -171,6 +174,19 @@ cb=f.colorbar(h,ax=axs)
 cb.set_label('Saturated fraction of time (%)')
 cb.set_ticks([0,25,50,75,100])
 axs.set(title='Water-saturated fraction of time',xlabel='Drainage time scale (days)',ylabel='Depth (cm)')
+axs.set_xscale('log')
+axs.set_xticks([],minor=True)
+axs.set_xticks(satfrac['anox_lenscales'])
+axs.set_xticklabels(satfrac['anox_lenscales'].to_masked_array())
+
+save_one_fig(f)
+
+f,axs=plt.subplots(num='Root biomass',clear=True)
+axs.plot(alldata['Total Sorbed Root_biomass'].isel(warming=0,soil_pH=3,birnrate=2,Ndep=0).squeeze().mean(dim='time').compute()*1e-3,alldata['depth'],'k-')
+axs.set(title='Root biomass profile',
+        xlabel='Root biomass concentration (mmol root C cm$^{-3}$ soil)',
+        ylabel='Depth (cm)',
+        ylim=(42,0))
 
 save_one_fig(f)
 
@@ -281,7 +297,7 @@ save_one_fig(Figure3_expanded)
 
 
 
-f,axs=plt.subplots(nrows=len(controldata['birnrate']),ncols=len(controldata['soil_pH']),clear=True,num='Figure S4 Mn bioavailability',figsize=(12,10),sharex=True,sharey=True)
+f,axs=plt.subplots(nrows=len(controldata['birnrate']),ncols=len(controldata['soil_pH']),clear=True,num='Figure S4 Mn bioavailability',figsize=(13,10),sharex=True,sharey=True)
 maxval=1.0
 minval=1e-5
 totalMn=((results_bybirnrate['Total Mn++']+results_bybirnrate['Total Mn+++']+results_bybirnrate['Total chelated_Mn+++'])/1000*results_bybirnrate.Porosity.mean()*results_bybirnrate.saturation + \
@@ -303,7 +319,7 @@ for ph in range(len(controldata['soil_pH'])):
         if (row)==0:
             axs[row,ph].set_title('pH = %1.1f'%controldata['soil_pH'][ph].load().item(),pad=10,fontsize='large',fontweight='bold')
         if ph==0:
-            axs[row,ph].text(-0.55,0.5,'Birnessite\nrate scale = %s\n(mmol Mn m$^{-3}$ y$^{-1}$)'%birnrate_labels[birnrate],
+            axs[row,ph].text(-0.57,0.5,'Birnessite\nrate constant = %s\n(mmol Mn m$^{-3}$ y$^{-1}$)'%birnrate_labels[birnrate],
             rotation=90,va='center',ha='center',transform=axs[row,ph].transAxes,fontsize='large',fontweight='bold')
 
         axs[row,ph].set_ylabel('Depth (cm)')
@@ -317,7 +333,7 @@ for num in range(axs.size):
 
 save_one_fig(f)
 
-f,axs=plt.subplots(ncols=len(redoxdata['soil_pH']),nrows=len(redoxdata['anox_lenscales']),clear=True,num='Figure S3 Mn redistribution redox',figsize=(4*len(redoxdata['soil_pH']),8),sharex=True,sharey=True,squeeze=False)
+f,axs=plt.subplots(ncols=len(redoxdata['soil_pH']),nrows=len(redoxdata['anox_lenscales']),clear=True,num='Figure S3 Mn redistribution redox',figsize=(2.5*len(redoxdata['soil_pH']),8),sharex=True,sharey=True,squeeze=False)
 totalMn_redox=(((redoxdata['Total Mn++']+redoxdata['Total Mn+++']+redoxdata['Total chelated_Mn+++'])/1000*redoxdata.Porosity.mean()*redoxdata.saturation + \
             (redoxdata['Birnessite2 VF']*7/molar_volume_birnessite) + \
             redoxdata['Total Sorbed Mn++']/100**3).load().coarsen(time=oneyr,boundary='trim').mean()*100**2*(redoxdata.z_bottom-redoxdata.z_top))
@@ -336,7 +352,10 @@ for ph in range(len(redoxdata['soil_pH'])):
         # if ph==0:
         #     axs[row,ph].text(-0.6,0.5,f'Drainage time\nscale = {redoxdata["anox_lenscales"][anox].load().item()} days',
         #         rotation=90,va='center',transform=axs[row,ph].transAxes,fontsize='large',fontweight='bold')
-        axs[row,ph].set_title(f'Drainage time\nscale = {redoxdata["anox_lenscales"][anox].load().item()} days')
+        if row==0:
+            axs[row,ph].set_title(f'Initial pH = {redoxdata["soil_pH"][ph].item():1.1f}\nDrainage time\nscale = {redoxdata["anox_lenscales"][anox].load().item()} days')
+        else:
+            axs[row,ph].set_title(f'Drainage time\nscale = {redoxdata["anox_lenscales"][anox].load().item()} days')
         axs[row,ph].set_ylabel('Depth (cm)')
         axs[row,ph].tick_params(labelleft=True,labelbottom=True)
             
@@ -360,13 +379,13 @@ f,axs=plt.subplots(nrows=4,ncols=1,num='Redox effects',clear=True,figsize=(4,7.5
 
 cmap=plt.get_cmap('Reds')
 redox=redoxdata["anox_lenscales"]
-axs[2].plot(redox,total_litter_redox.isel(time=39),'o')
+axs[2].plot(redox,total_litter_redox.isel(time=39,soil_pH=2),'o')
 
-axs[1].plot(redox,redoxdata['litter_Mn'].isel(litter_year=39).squeeze(),'o')
+axs[1].plot(redox,redoxdata['litter_Mn'].isel(litter_year=39,soil_pH=2).squeeze(),'o')
 
-axs[0].plot(redox,(totalMn_redox.squeeze()-birnessite_redox).isel(depth=0,time=39),'o')
+axs[0].plot(redox,(totalMn_redox.squeeze()-birnessite_redox).isel(depth=0,time=39,soil_pH=2),'o')
 
-axs[3].plot(redox,total_litter_redox.isel(time=39)+total_SOC_redox.isel(time=39),'o')
+axs[3].plot(redox,total_litter_redox.isel(time=39,soil_pH=2)+total_SOC_redox.isel(time=39,soil_pH=2),'o')
 
 axs[2].set(title='Forest floor C stock',xlabel='Drainage time scale (days)',ylabel='C stock (kg C m$^{-2}$)')
 axs[1].set(title='Leaf litter Mn concentration',xlabel='Drainage time scale (days)',ylabel='Mn concentration (mmol kg$^{-1}$)')
@@ -380,7 +399,7 @@ save_one_fig(f)
 
 
 
-f,axs=plt.subplots(ncols=len(controldata['soil_pH']),nrows=len(controldata['birnrate']),clear=True,num='Figure S3 Mn redistribution',figsize=(12,10),sharex=True,sharey=True)
+f,axs=plt.subplots(ncols=len(controldata['soil_pH']),nrows=len(controldata['birnrate']),clear=True,num='Figure S3 Mn redistribution',figsize=(13,10),sharex=True,sharey=True)
 maxval=(totalMn-totalMn.isel(time=0)).max().compute()
 minval=(totalMn-totalMn.isel(time=0)).min().compute()
 for ph in range(len(controldata['soil_pH'])):
@@ -394,7 +413,7 @@ for ph in range(len(controldata['soil_pH'])):
         if row==0:
             axs[row,ph].set_title('pH = %1.1f'%controldata['soil_pH'][ph].load().item(),pad=10,fontsize='large',fontweight='bold')
         if ph==0:
-            axs[row,ph].text(-0.55,0.5,'Birnessite\nrate scale = %s \n(mmol Mn m$^{-3}$ y$^{-1}$)'%birnrate_labels[birnrate],
+            axs[row,ph].text(-0.57,0.5,'Birnessite\nrate constant = %s \n(mmol Mn m$^{-3}$ y$^{-1}$)'%birnrate_labels[birnrate],
                 rotation=90,va='center',ha='center',transform=axs[row,ph].transAxes,fontsize='large',fontweight='bold')
 
         axs[row,ph].set_ylabel('Depth (cm)')
@@ -417,12 +436,13 @@ f,axs=plt.subplots(ncols=2,num='Mn leaching',figsize=(8,4),clear=True)
         /(totalMn+rootuptake).isel(time=0).sum(dim='depth')*100/4).T.plot(ax=axs[0],vmin=0,
                                             cmap='Blues'#,cbar_kwargs={'label':'Cumulative Mn leached (%/decade)'}
                                             )
-axs[0].set(title='Cumulative Mn leached (Soil chem)',xlabel='Soil pH',ylabel='Birnessite dissolution rate scale\n(mmol Mn m$^{-3}$ soil year$^{-1}$)',yscale='log',ylim=(0.2,88))
+axs[0].set(title='Cumulative Mn leached (Soil chem)',xlabel='Soil pH',ylabel='Birnessite dissolution rate constant\n(mmol Mn m$^{-3}$ soil year$^{-1}$)',yscale='log',ylim=(0.2,88))
 
 axs[1].plot(satfrac.mean(dim='depth'),(((totalMn_redox+rootuptake_redox).isel(time=0).sum(dim='depth')
         -(totalMn_redox+rootuptake_redox).isel(time=39).sum(dim='depth'))
                 /(totalMn_redox+rootuptake_redox).isel(time=0).sum(dim='depth')*100/4).T.squeeze())
 axs[1].set(title='Cumulative Mn leached (Drainage)',xlabel='Mean saturated soil fraction',ylabel='Cumulative Mn leached (%/decade)')
+axs[1].legend(labels=[f'Initial pH = {pH.item():1.0f}' for pH in totalMn_redox['soil_pH']])
 
 save_one_fig(f)
 
@@ -730,11 +750,11 @@ axs[0,1].bar(np.arange(5)+0.5,bioavail_Mn.isel(warming=0,time=yr,Ndep=2,soil_pH=
 axs[0,0].legend()
 axs[0,1].legend()
 
-axs[0,1].set(title='Soil bioavailable Mn',xlabel='Birnessite dissolution rate scale\n(mmol Mn m$^{-3}$ soil year$^{-1}$)',ylabel='Bioavailable Mn (mmol m$^{-2}$)',xticks=np.arange(5)+0.25,xticklabels=birnrate_labels,yscale='log')
-axs[1,1].set(title='Leaf litter Mn concentration',xlabel='Birnessite dissolution rate scale\n(mmol Mn m$^{-3}$ soil year$^{-1}$)',ylabel='Mn concentration (mmol kg$^{-1}$)',xticks=np.arange(5)+0.25,xticklabels=birnrate_labels,ylim=(0,205))
+axs[0,1].set(title='Soil bioavailable Mn',xlabel='Birnessite dissolution rate constant\n(mmol Mn m$^{-3}$ soil year$^{-1}$)',ylabel='Bioavailable Mn (mmol m$^{-2}$)',xticks=np.arange(5)+0.25,xticklabels=birnrate_labels,yscale='log')
+axs[1,1].set(title='Leaf litter Mn concentration',xlabel='Birnessite dissolution rate constant\n(mmol Mn m$^{-3}$ soil year$^{-1}$)',ylabel='Mn concentration (mmol kg$^{-1}$)',xticks=np.arange(5)+0.25,xticklabels=birnrate_labels,ylim=(0,205))
 axs[2,1].set(title='Particulate organic matter stock',xlabel='Litter Mn concentration (mmol kg$^{-1}$)',ylabel='POM stock (kg C m$^{-2}$)',ylim=(0.9,1.6))
-axs[0,0].set(title='Soil bioavailable Mn',xlabel='Birnessite dissolution rate scale\n(mmol Mn m$^{-3}$ soil year$^{-1}$)',ylabel='Bioavailable Mn (mmol m$^{-2}$)',xticks=np.arange(5)+0.25,xticklabels=birnrate_labels,yscale='log')
-axs[1,0].set(title='Leaf litter Mn concentration',xlabel='Birnessite dissolution rate scale\n(mmol Mn m$^{-3}$ soil year$^{-1}$)',ylabel='Mn concentration (mmol kg$^{-1}$)',xticks=np.arange(5)+0.25,xticklabels=birnrate_labels,ylim=(0,205))
+axs[0,0].set(title='Soil bioavailable Mn',xlabel='Birnessite dissolution rate constant\n(mmol Mn m$^{-3}$ soil year$^{-1}$)',ylabel='Bioavailable Mn (mmol m$^{-2}$)',xticks=np.arange(5)+0.25,xticklabels=birnrate_labels,yscale='log')
+axs[1,0].set(title='Leaf litter Mn concentration',xlabel='Birnessite dissolution rate constant\n(mmol Mn m$^{-3}$ soil year$^{-1}$)',ylabel='Mn concentration (mmol kg$^{-1}$)',xticks=np.arange(5)+0.25,xticklabels=birnrate_labels,ylim=(0,205))
 axs[2,0].set(title='Particulate organic matter stock',xlabel='Litter Mn concentration (mmol kg$^{-1}$)',ylabel='POM stock (kg C m$^{-2}$)',ylim=(0.9,1.6))
 
 
