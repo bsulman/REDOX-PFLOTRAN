@@ -194,7 +194,7 @@ def make_aqueous_network(
                 # This accounts for stoichiometry of SOIL2 decomposing to SOIL3 which has a higher C:N
                 # decomp_network.decomp_pool(name='DOM3',kind='primary',constraints={'initial':tinyval/catomw},CN=16.0),
                 decomp_network.decomp_pool(name='Acetate-',kind='primary',constraints={'initial':tinyval/catomw}),
-                # decomp_network.decomp_pool(name='Acetic_acid(aq)',kind='secondary'),
+                decomp_network.decomp_pool(name='Acetic_acid(aq)',kind='secondary'),
 
                 decomp_network.decomp_pool(name='H2(aq)',kind='primary',constraints={'initial':tinyval}),
 
@@ -206,9 +206,10 @@ def make_aqueous_network(
                 decomp_network.decomp_pool(name='Na+',kind='primary',constraints={'initial':1.0e-6/(35.453*1.80655*1000)}),
                 decomp_network.decomp_pool(name='Halite',rate='1.d-10 mol/m^2-sec',constraints={'initial':'0.0  1000.0 m^2/m^3'},kind='mineral'),
 
+                # Might address some surface pH issues if we used H2S as primary species rather than HS-
                 decomp_network.decomp_pool(name='SO4--',kind='primary',constraints={'initial':'1e-5 M Pyrite'}),
-                decomp_network.decomp_pool(name='HS-',kind='primary',constraints={'initial':'1e-8 G H2S(g)'}),
-                decomp_network.decomp_pool(name='H2S(aq)',kind='secondary'),
+                decomp_network.decomp_pool(name='H2S(aq)',kind='primary',constraints={'initial':'1e-8 G H2S(g)'}),
+                decomp_network.decomp_pool(name='HS-',kind='secondary'),
                 decomp_network.decomp_pool(name='H2SO4(aq)',kind='secondary'),
                 decomp_network.decomp_pool(name='HSO4-',kind='secondary'),
                 decomp_network.decomp_pool(name='H2S(g)',kind='gas'),
@@ -434,24 +435,24 @@ def make_aqueous_network(
         # 9 H+ + 8 e- + SO4-- -> HS- + 4 H2O
         # 2 DOM-C + SO4-- + H+ -> 2 CO2 + HS- 
         # C2H3O2- + 2 H2O -> 2 CO2 + 7 H+ + 8 e-
-        # SO4-- + 9 H+ + 8 e- -> HS- + 4 H2O
+        # SO4-- + 10 H+ + 8 e- -> H2S + 4 H2O
         if sulfate:
                 reactions.extend([
                         # Iversen and Jorgensen (1985) found sulfate reduction up to 60 nmol/cm3/day
                         # In first manuscript draft rate constant was 5e-9. Consider increasing to ~1e-8 because modeled sulfide is very low
-                        decomp_network.reaction(name='Sulfate reduction',reactant_pools={'Acetate-':1.0,'SO4--':1.0,'H+':2},
-                                product_pools={'CO2(aq)':2.0,'HS-':1.0},
+                        decomp_network.reaction(name='Sulfate reduction',reactant_pools={'Acetate-':1.0,'SO4--':1.0,'H+':3},
+                                product_pools={'CO2(aq)':2.0,'H2S(aq)':1.0},
                                 rate_constant=5e-8,reactiontype='MICROBIAL',activation_energy=Eact_sulfatered,
                                 monod_terms=[decomp_network.monod(species='Acetate-',k=acetate_scale,threshold=1.1e-15),
                                                 decomp_network.monod(species='SO4--',k=sulfate_scale),
                                                 decomp_network.monod(species='H+',k=1e-6)],
                                 inhibition_terms=[decomp_network.inhibition(species='O2(aq)',k=O2_scale,type='MONOD')],
                         ),
-                        # HS- + 2 O2 -> SO4-- + H+
-                        decomp_network.reaction(name='Sulfide oxidation',stoich='1.0 HS- + 2.0 O2(aq) -> 1.0 SO4-- + 1.0 H+',
+                        # H2S + 2 O2 -> SO4-- + 2 H+
+                        decomp_network.reaction(name='Sulfide oxidation',stoich='1.0 H2S(aq) + 2.0 O2(aq) -> 1.0 SO4-- + 2.0 H+',
                                 rate_constant=1e-8,reactiontype='MICROBIAL',activation_energy=Eact,
                                 monod_terms=[decomp_network.monod(species='O2(aq)',k=O2_scale,threshold=0.0),
-                                                decomp_network.monod(species='HS-',k=sulfate_scale/10)],
+                                                decomp_network.monod(species='H2S(aq)',k=sulfate_scale/10)],
                         )
 
                 ])
@@ -492,7 +493,7 @@ def make_aqueous_network(
 
                 if sulfate:
                         # Iversen et al 1985 found rates around 20 nmol/cm3/day
-                        reactions.extend([   decomp_network.reaction(name='Methane oxidation (SO4)',stoich='1.0 CH4(aq)  + 1.0 SO4-- + 1.0 H+ -> 1.0 CO2(aq)  + 1.0 HS- + 2.0 H2O ',
+                        reactions.extend([   decomp_network.reaction(name='Methane oxidation (SO4)',stoich='1.0 CH4(aq)  + 1.0 SO4-- + 2.0 H+ -> 1.0 CO2(aq)  + 1.0 H2S(aq) + 2.0 H2O ',
                                             monod_terms=[decomp_network.monod(species='SO4--',k=sulfate_scale,threshold=thresh),decomp_network.monod(species='CH4(aq)',k=CH4_scale,threshold=thresh)],
                                         rate_constant=1e-9,reactiontype='MICROBIAL',activation_energy=Eact,),])
 
@@ -528,10 +529,10 @@ def oxygen_demand(txt):
 decomp_network_ad=make_network()
 decomp_network_notad=make_network(adfactor_soil3=1.0,adfactor_soil4=1.0)
 decomp_network_O2_ad=make_aqueous_network(calcite=False,Fe=True,DOM_scale=0.1,methane=True,FeS_rate=1e-9,init_FeOxide=0.01,init_FeSulfide=0.0)
-decomp_network_O2_notad=make_aqueous_network(adfactor_soil3=1.0,adfactor_soil4=1.0,calcite=False,Fe=True,N_imm_lim=0.1,anox_ratemod=0.1,
+decomp_network_O2_notad=make_aqueous_network(adfactor_soil3=1.0,adfactor_soil4=1.0,calcite=False,Fe=True,N_imm_lim=0.1,anox_ratemod=0.2,
                                                 DOM_scale=0.5e-2,acetate_scale=1e-3,methane=True,FeS_rate=1e-8,init_FeOxide=0.01,FeOxide_rate=1e-8,init_FeSulfide=0.0)
-decomp_network_O2_lowFe_notad=make_aqueous_network(adfactor_soil3=1.0,adfactor_soil4=1.0,calcite=False,Fe=True,N_imm_lim=0.1,anox_ratemod=0.1,
-                                                DOM_scale=0.5e-2,acetate_scale=1e-3,methane=True,FeS_rate=1e-8,init_FeOxide=0.01,FeOxide_rate=1e-10,init_FeSulfide=0.0)
+decomp_network_O2_lowFe_notad=make_aqueous_network(adfactor_soil3=1.0,adfactor_soil4=1.0,calcite=False,Fe=True,N_imm_lim=0.1,anox_ratemod=0.2,
+                                                DOM_scale=0.5e-2,acetate_scale=1e-3,methane=True,FeS_rate=1e-10,init_FeOxide=0.01,FeOxide_rate=1e-12,init_FeSulfide=0.0)
 
 
 decomp_network_arctic_ad=make_aqueous_network(calcite=False,Fe=True,methane=True,sulfate=True,DOM_scale=0.1,init_FeOxide=0.01)
