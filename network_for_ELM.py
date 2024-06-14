@@ -236,6 +236,11 @@ def make_aqueous_network(
 
                 decomp_network.decomp_pool(name='CH4(aq)',kind='primary',constraints={'initial':'1900e-9 G CH4(g)'}), # ~1900 ppb atmospheric concentration https://gml.noaa.gov/ccgg/trends_ch4/
                 decomp_network.decomp_pool(name='CH4(g)',kind='gas'),
+
+                # Sorption site density gets scaled by mineral volume fraction. So using this we could dynamically change the capacity
+                decomp_network.decomp_pool(name='Rock(s)',rate='0.0 mol/m^2-sec',constraints={'initial':'0.25 1000.0 m^2/m^3'},kind='mineral'),
+                decomp_network.decomp_pool(name='>Carboxylate-',kind='surf_complex',
+                                           mineral='Rock(s)',site_density=1000.0,complexes=['>Carboxylic_acid']), # site density in mol/m3 of mineral
         ]
 
         if calcite:
