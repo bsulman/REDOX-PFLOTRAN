@@ -19,6 +19,7 @@ You can of course organize these codes however you want, as long as you make sur
 
             export PETSC_DIR=/ccsopen/proj/cli185/petsc-3.x-noopt/
             export PETSC_PATH=$PETSC_DIR
+            export PFLOTRAN_DIR=/ccsopen/proj/cli185/b0u/pflotran
     
         Close and reopen your terminal after making these edits so they will take effect.
 

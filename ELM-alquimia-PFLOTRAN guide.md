@@ -143,7 +143,7 @@ You can of course organize these codes however you want, as long as you make sur
                        --model_root $HOME/ELM-alquimia/E3SM --ccsm_input /nfs/data/ccsi/proj-shared/E3SM/pt-e3sm-inputdata \
                        --metdir $metdir \
                        --domainfile $domain \
-                       --surffile $surf --np 7 \
+                       --surffile $surf --np 7 --walltime 30 \
                        --caseroot ~/cases --runroot /lustre/or-scratch/cades-ccsi/$USER/  --mpilib openmpi --pio_version 2 \
                        --hist_nhtfrq_trans -1 --hist_mfilt_trans 8760 --hist_mfilt_spinup 0 --hist_nhtfrq_spinup 12 --cn_only \
                        --trans_varlist $varlist \
