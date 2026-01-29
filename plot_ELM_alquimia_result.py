@@ -65,7 +65,7 @@ def plot_vars(data,vars,plotname=None,figsize=(4,4),maxdepth=1.5,vmax={},vmin={}
                 vmax_O2=vmax['O2']
             else:
                 vmax_O2=(data['soil_O2'].T.squeeze()[:10,:]/watervol).isel(levdcmp=0).compute().quantile(0.95)
-            plot_var(data['soil_O2'].T.squeeze()[:10,:]/watervol,contourax,profileax,vmax=vmax_O2,
+            plot_var(data['soil_O2'].T.squeeze()[:10,:]/watervol,contourax,profileax,vmax=vmax_O2,vmin=vmin.get('O2',0.0),
                      label='Oxygen concentration\n(mmol/L H$_2$O)',snapshots=snapshots,profile_color=profile_color,
                      mean_profile=mean_profile,quantiles=quantiles,
                      maxdepth=maxdepth,title='Soil O$_2$',axlabel='O$_2$ (mmol/L)')
@@ -154,7 +154,7 @@ def plot_vars(data,vars,plotname=None,figsize=(4,4),maxdepth=1.5,vmax={},vmin={}
                 vmax_sulfide=vmax['sulfide']
             else:
                 vmax_sulfide=sulfide.load()[:7,:].quantile(0.95)            
-            plot_var(sulfide,contourax,profileax,vmax=vmax_sulfide,label='Sulfide concentration\n(mmol/L H$_2$O)',
+            plot_var(sulfide,contourax,profileax,vmax=vmax_sulfide,vmin=vmin.get('sulfide',0.0),label='Sulfide concentration\n(mmol/L H$_2$O)',
                      snapshots=snapshots,profile_color=profile_color,mean_profile=mean_profile,quantiles=quantiles,
                      maxdepth=maxdepth,title='Sulfide concentration',axlabel='Sulfide (mmol/L H$_2$O)',)
         elif var=='vertflow':
@@ -172,7 +172,7 @@ def plot_vars(data,vars,plotname=None,figsize=(4,4),maxdepth=1.5,vmax={},vmin={}
                      snapshots=snapshots,profile_color=profile_color,mean_profile=mean_profile,quantiles=quantiles,
                      maxdepth=maxdepth,title='Soil temperature',axlabel='Temperature (C)')
         if contourax is not None:
-            if var=='NPP' or var=='GPP' or var=='NEE':
+            if var in ['NPP','GPP','NEE','HR']:
                 (data[var].squeeze()/12e-6).plot(ax=contourax,c=profile_color)
                 contourax.set(title=var,ylabel=var+'\n($\mu$ mol m$^{-2}$ s$^{-1}$)',xlabel='Time (year)')
                 if profileax is not None:
@@ -190,7 +190,7 @@ def plot_vars(data,vars,plotname=None,figsize=(4,4),maxdepth=1.5,vmax={},vmin={}
                 lev2=lev1.where(lev1==0,lev1-1).compute()
                 ZWT=(data['levgrnd'][lev2]+(data['levgrnd'][lev1]-data['levgrnd'][lev2])/(VWC[lev1]-VWC[lev2])*(WT_thresh-VWC[lev2])).where(lev1>0,0.0)
 
-                (H2OSFC.where(H2OSFC>0,-ZWT)).plot(ax=contourax,c=profile_color)
+                (H2OSFC.where((H2OSFC>0.001)&(ZWT<0.01),-ZWT)).plot(ax=contourax,c=profile_color)
                 contourax.set(title='Water level',ylabel='Water level (m)',xlabel='Time (year)')
                 contourax.axhline(0.0,c='k',lw=0.5,ls=':')
                 if profileax is not None:
@@ -199,6 +199,13 @@ def plot_vars(data,vars,plotname=None,figsize=(4,4),maxdepth=1.5,vmax={},vmin={}
                 if 'H2OSFC_TIDE' in data:
                     (data[var].squeeze()*1e-3).plot(ax=contourax)
                     contourax.set(title='Tide water level',ylabel='Water level (m)',xlabel='Time (year)')
+                    if profileax is not None:
+                        profileax.set_visible(False)
+                    contourax.axhline(0.0,c='k',lw=0.5,ls=':')
+            elif var=='SALINITY_TIDE':
+                if 'SALINITY' in data:
+                    (data['SALINITY'].squeeze()).plot(ax=contourax)
+                    contourax.set(title='Tide water salinity',ylabel='Salinity (ppt)',xlabel='Time (year)')
                     if profileax is not None:
                         profileax.set_visible(False)
                     contourax.axhline(0.0,c='k',lw=0.5,ls=':')

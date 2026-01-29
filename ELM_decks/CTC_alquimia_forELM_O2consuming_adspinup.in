@@ -41,7 +41,7 @@ PRIMARY_SPECIES
   Cl-
   Na+
   SO4--
-  HS-
+  H2S(aq)
   Fe+++
   Fe++
   CH4(aq)
@@ -62,7 +62,7 @@ DECOUPLED_EQUILIBRIUM_REACTIONS
   Cl-
   Na+
   SO4--
-  HS-
+  H2S(aq)
   Fe+++
   Fe++
   CH4(aq)
@@ -72,8 +72,9 @@ SECONDARY_SPECIES
   #### NOTE: Beginning of auto-inserted secondary species ####
   HCO3-
   CO3--
+  Acetic_acid(aq)
   OH-
-  H2S(aq)
+  HS-
   H2SO4(aq)
   HSO4-
   FeIIIDOM1(aq)
@@ -87,6 +88,7 @@ MINERALS
   Pyrite
   Fe(OH)3
   Goethite
+  Rock(s)
   #### NOTE: End of auto-inserted mineral species ####
 /
 MINERAL_KINETICS
@@ -95,16 +97,19 @@ MINERAL_KINETICS
     RATE_CONSTANT  1.d-10 mol/m^2-sec
   /
   Pyrrhotite
-    RATE_CONSTANT  1e-11 mol/m^2-s
+    RATE_CONSTANT  1e-09 mol/m^2-s
   /
   Pyrite
-    RATE_CONSTANT  1e-13 mol/m^2-s
+    RATE_CONSTANT  1e-11 mol/m^2-s
   /
   Fe(OH)3
-    RATE_CONSTANT  1.d-10 mol/m^2-sec
+    RATE_CONSTANT  1e-10 mol/m^2-sec
   /
   Goethite
-    RATE_CONSTANT  1.d-13 mol/m^2-sec
+    RATE_CONSTANT  1e-13 mol/m^2-sec
+  /
+  Rock(s)
+    RATE_CONSTANT  0.0 mol/m^2-sec
   /
   #### NOTE: End of auto-inserted mineral kinetics ####
 /
@@ -140,6 +145,14 @@ PASSIVE_GAS_SPECIES
 /
 SORPTION
   #### NOTE: Beginning of auto-inserted sorption sites ####
+  SURFACE_COMPLEXATION_RXN
+    EQUILIBRIUM
+    MINERAL Rock(s)
+    SITE >Carboxylate- 1.00000000e+03
+    COMPLEXES
+      >Carboxylic_acid
+    /
+  /
 /
 #### NOTE: End of auto-inserted sorption sites ####
 #### NOTE: Beginning of auto-inserted reactions ####
@@ -160,7 +173,7 @@ SORPTION
     INHIBITION
       SPECIES_NAME        O2(aq)
       TYPE MONOD
-      INHIBITION_CONSTANT 1.00000000e-05
+      INHIBITION_CONSTANT 2.00000000e-05
     /
     ACTIVATION_ENERGY 80000.00000000
   /
@@ -209,7 +222,7 @@ SORPTION
     RATE_CONSTANT       1.00000000e-06
     MONOD
       SPECIES_NAME        O2(aq)
-      HALF_SATURATION_CONSTANT 1.00000000e-04
+      HALF_SATURATION_CONSTANT 2.00000000e-04
       THRESHOLD_CONCENTRATION 0.00000000e+00
     /
     MONOD
@@ -232,7 +245,7 @@ SORPTION
     /
     MONOD
       SPECIES_NAME        O2(aq)
-      HALF_SATURATION_CONSTANT 1.00000000e-04
+      HALF_SATURATION_CONSTANT 2.00000000e-04
       THRESHOLD_CONCENTRATION 0.00000000e+00
     /
     ACTIVATION_ENERGY 50000.00000000
@@ -243,7 +256,7 @@ SORPTION
     RATE_CONSTANT       3.00000000e-07
     MONOD
       SPECIES_NAME        O2(aq)
-      HALF_SATURATION_CONSTANT 1.00000000e-04
+      HALF_SATURATION_CONSTANT 2.00000000e-04
       THRESHOLD_CONCENTRATION 0.00000000e+00
     /
     MONOD
@@ -264,7 +277,7 @@ SORPTION
     /
     MONOD
       SPECIES_NAME        O2(aq)
-      HALF_SATURATION_CONSTANT 1.00000000e-04
+      HALF_SATURATION_CONSTANT 2.00000000e-04
       THRESHOLD_CONCENTRATION 0.00000000e+00
     /
     ACTIVATION_ENERGY 50000.00000000
@@ -272,30 +285,30 @@ SORPTION
   # Methane oxidation
   MICROBIAL_REACTION
     REACTION 1.00000000e+00 CH4(aq)  + 2.00000000e+00 O2(aq)  -> 1.00000000e+00 CO2(aq)  + 2.00000000e+00 H2O 
-    RATE_CONSTANT       4.00000000e-08
+    RATE_CONSTANT       1.00000000e-07
     MONOD
       SPECIES_NAME        CH4(aq)
-      HALF_SATURATION_CONSTANT 1.00000000e-03
+      HALF_SATURATION_CONSTANT 1.00000000e-05
       THRESHOLD_CONCENTRATION 0.00000000e+00
     /
     MONOD
       SPECIES_NAME        O2(aq)
-      HALF_SATURATION_CONSTANT 1.00000000e-04
+      HALF_SATURATION_CONSTANT 2.00000000e-05
       THRESHOLD_CONCENTRATION 0.00000000e+00
     /
     ACTIVATION_ENERGY 50000.00000000
   /
   # Sulfide oxidation
   MICROBIAL_REACTION
-    REACTION 1.00000000e+00 HS-  + 2.00000000e+00 O2(aq)  -> 1.00000000e+00 SO4--  + 1.00000000e+00 H+ 
+    REACTION 1.00000000e+00 H2S(aq)  + 2.00000000e+00 O2(aq)  -> 1.00000000e+00 SO4--  + 2.00000000e+00 H+ 
     RATE_CONSTANT       1.00000000e-08
     MONOD
       SPECIES_NAME        O2(aq)
-      HALF_SATURATION_CONSTANT 1.00000000e-04
+      HALF_SATURATION_CONSTANT 2.00000000e-04
       THRESHOLD_CONCENTRATION 0.00000000e+00
     /
     MONOD
-      SPECIES_NAME        HS-
+      SPECIES_NAME        H2S(aq)
       HALF_SATURATION_CONSTANT 5.00000000e-04
     /
     ACTIVATION_ENERGY 50000.00000000
@@ -312,7 +325,7 @@ SORPTION
     INHIBITION
       SPECIES_NAME        O2(aq)
       TYPE MONOD
-      INHIBITION_CONSTANT 1.00000000e-04
+      INHIBITION_CONSTANT 2.00000000e-04
     /
     INHIBITION
       SPECIES_NAME        Acetate-
@@ -342,14 +355,14 @@ SORPTION
     INHIBITION
       SPECIES_NAME        O2(aq)
       TYPE MONOD
-      INHIBITION_CONSTANT 1.00000000e-04
+      INHIBITION_CONSTANT 2.00000000e-04
     /
     ACTIVATION_ENERGY 50000.00000000
   /
   # Sulfate reduction
   MICROBIAL_REACTION
-    REACTION 1.00000000e+00 Acetate-  + 1.00000000e+00 SO4--  + 2.00000000e+00 H+  -> 2.00000000e+00 CO2(aq)  + 1.00000000e+00 HS- 
-    RATE_CONSTANT       5.00000000e-09
+    REACTION 1.00000000e+00 Acetate-  + 1.00000000e+00 SO4--  + 3.00000000e+00 H+  -> 2.00000000e+00 CO2(aq)  + 1.00000000e+00 H2S(aq) 
+    RATE_CONSTANT       2.00000000e-08
     MONOD
       SPECIES_NAME        Acetate-
       HALF_SATURATION_CONSTANT 4.00000000e-03
@@ -366,7 +379,7 @@ SORPTION
     INHIBITION
       SPECIES_NAME        O2(aq)
       TYPE MONOD
-      INHIBITION_CONSTANT 1.00000000e-04
+      INHIBITION_CONSTANT 2.00000000e-04
     /
     ACTIVATION_ENERGY 80000.00000000
   /
@@ -382,7 +395,7 @@ SORPTION
     INHIBITION
       SPECIES_NAME        O2(aq)
       TYPE MONOD
-      INHIBITION_CONSTANT 1.00000000e-05
+      INHIBITION_CONSTANT 2.00000000e-05
     /
     INHIBITION
       SPECIES_NAME        H+
@@ -393,8 +406,8 @@ SORPTION
   /
   # Methane oxidation (SO4)
   MICROBIAL_REACTION
-    REACTION 1.00000000e+00 CH4(aq)  + 1.00000000e+00 SO4--  + 1.00000000e+00 H+  -> 1.00000000e+00 CO2(aq)  + 1.00000000e+00 HS-  + 2.00000000e+00 H2O 
-    RATE_CONSTANT       3.00000000e-10
+    REACTION 1.00000000e+00 CH4(aq)  + 1.00000000e+00 SO4--  + 2.00000000e+00 H+  -> 1.00000000e+00 CO2(aq)  + 1.00000000e+00 H2S(aq)  + 2.00000000e+00 H2O 
+    RATE_CONSTANT       1.00000000e-09
     MONOD
       SPECIES_NAME        SO4--
       HALF_SATURATION_CONSTANT 5.00000000e-03
@@ -426,15 +439,15 @@ SORPTION
   REACTION_SANDBOX
     SOMDECOMP
       POOLS
-        DOM1                20.00000000
-        LITR2               # Variable C:N pool
         SOIL2               12.00000000
+        SOIL3               10.00000000
+        SOIL1               12.00000000
+        LITR2               # Variable C:N pool
+        LITR1               # Variable C:N pool
+        DOM1                20.00000000
         LITR3               # Variable C:N pool
         CWD                 # Variable C:N pool
         SOIL4               10.00000000
-        SOIL1               12.00000000
-        LITR1               # Variable C:N pool
-        SOIL3               10.00000000
       /
       Abiotic_Factors
         TEMPERATURE_RESPONSE_FUNCTION
@@ -444,6 +457,93 @@ SORPTION
           LOGTHETA
         /
       /
+    # SOIL2 decomp
+    REACTION
+      UPSTREAM_POOL       SOIL2
+      DOWNSTREAM_POOL     SOIL3               5.40000000e-01
+      DOWNSTREAM_POOL     DOM1                4.60000000e-01
+      RATE_DECOMPOSITION  1.41000000e-02 1/d
+      MONOD
+        SPECIES_NAME        O2(aq)
+        HALF_SATURATION_CONSTANT 2.00000000e-04
+        THRESHOLD_CONCENTRATION 0.00000000e+00
+      /
+    /
+    # SOIL2 decomp anox
+    REACTION
+      UPSTREAM_POOL       SOIL2
+      DOWNSTREAM_POOL     SOIL3               5.40000000e-01
+      DOWNSTREAM_POOL     DOM1                4.60000000e-01
+      RATE_DECOMPOSITION  1.41000000e-04 1/d
+      INHIBITION
+        SPECIES_NAME        DOM1
+        TYPE MONOD
+        INHIBITION_CONSTANT 5.00000000e-01
+      /
+      INHIBITION
+        SPECIES_NAME        O2(aq)
+        TYPE MONOD
+        INHIBITION_CONSTANT 2.00000000e-05
+      /
+    /
+    # SOIL3 decomp
+    REACTION
+      UPSTREAM_POOL       SOIL3
+      DOWNSTREAM_POOL     SOIL4               4.50000000e-01
+      DOWNSTREAM_POOL     DOM1                5.50000000e-01
+      RATE_DECOMPOSITION  1.41000000e-02 1/d
+      MONOD
+        SPECIES_NAME        O2(aq)
+        HALF_SATURATION_CONSTANT 2.00000000e-04
+        THRESHOLD_CONCENTRATION 0.00000000e+00
+      /
+    /
+    # SOIL3 decomp anox
+    REACTION
+      UPSTREAM_POOL       SOIL3
+      DOWNSTREAM_POOL     SOIL4               4.50000000e-01
+      DOWNSTREAM_POOL     DOM1                5.50000000e-01
+      RATE_DECOMPOSITION  1.41000000e-04 1/d
+      INHIBITION
+        SPECIES_NAME        DOM1
+        TYPE MONOD
+        INHIBITION_CONSTANT 5.00000000e-01
+      /
+      INHIBITION
+        SPECIES_NAME        O2(aq)
+        TYPE MONOD
+        INHIBITION_CONSTANT 2.00000000e-05
+      /
+    /
+    # SOIL1 decomp
+    REACTION
+      UPSTREAM_POOL       SOIL1
+      DOWNSTREAM_POOL     SOIL2               7.20000000e-01
+      DOWNSTREAM_POOL     DOM1                2.80000000e-01
+      RATE_DECOMPOSITION  7.26000000e-02 1/d
+      MONOD
+        SPECIES_NAME        O2(aq)
+        HALF_SATURATION_CONSTANT 2.00000000e-04
+        THRESHOLD_CONCENTRATION 0.00000000e+00
+      /
+    /
+    # SOIL1 decomp anox
+    REACTION
+      UPSTREAM_POOL       SOIL1
+      DOWNSTREAM_POOL     SOIL2               7.20000000e-01
+      DOWNSTREAM_POOL     DOM1                2.80000000e-01
+      RATE_DECOMPOSITION  7.26000000e-04 1/d
+      INHIBITION
+        SPECIES_NAME        DOM1
+        TYPE MONOD
+        INHIBITION_CONSTANT 5.00000000e-01
+      /
+      INHIBITION
+        SPECIES_NAME        O2(aq)
+        TYPE MONOD
+        INHIBITION_CONSTANT 2.00000000e-05
+      /
+    /
     # LITR2 decomp
     REACTION
       UPSTREAM_POOL       LITR2
@@ -464,7 +564,7 @@ SORPTION
       /
       MONOD
         SPECIES_NAME        O2(aq)
-        HALF_SATURATION_CONSTANT 1.00000000e-04
+        HALF_SATURATION_CONSTANT 2.00000000e-04
         THRESHOLD_CONCENTRATION 0.00000000e+00
       /
     /
@@ -473,7 +573,7 @@ SORPTION
       UPSTREAM_POOL       LITR2
       DOWNSTREAM_POOL     SOIL2               4.50000000e-01
       DOWNSTREAM_POOL     DOM1                5.50000000e-01
-      RATE_DECOMPOSITION  3.63000000e-03 1/d
+      RATE_DECOMPOSITION  7.26000000e-04 1/d
       MONOD
         SPECIES_NAME        NH4+
         HALF_SATURATION_CONSTANT 3.02500000e-04
@@ -489,157 +589,12 @@ SORPTION
       INHIBITION
         SPECIES_NAME        DOM1
         TYPE MONOD
-        INHIBITION_CONSTANT 3.00000000e-01
+        INHIBITION_CONSTANT 5.00000000e-01
       /
       INHIBITION
         SPECIES_NAME        O2(aq)
         TYPE MONOD
-        INHIBITION_CONSTANT 1.00000000e-05
-      /
-    /
-    # SOIL2 decomp
-    REACTION
-      UPSTREAM_POOL       SOIL2
-      DOWNSTREAM_POOL     SOIL3               5.40000000e-01
-      DOWNSTREAM_POOL     DOM1                4.60000000e-01
-      RATE_DECOMPOSITION  1.41000000e-02 1/d
-      MONOD
-        SPECIES_NAME        O2(aq)
-        HALF_SATURATION_CONSTANT 1.00000000e-04
-        THRESHOLD_CONCENTRATION 0.00000000e+00
-      /
-    /
-    # SOIL2 decomp anox
-    REACTION
-      UPSTREAM_POOL       SOIL2
-      DOWNSTREAM_POOL     SOIL3               5.40000000e-01
-      DOWNSTREAM_POOL     DOM1                4.60000000e-01
-      RATE_DECOMPOSITION  7.05000000e-04 1/d
-      INHIBITION
-        SPECIES_NAME        DOM1
-        TYPE MONOD
-        INHIBITION_CONSTANT 3.00000000e-01
-      /
-      INHIBITION
-        SPECIES_NAME        O2(aq)
-        TYPE MONOD
-        INHIBITION_CONSTANT 1.00000000e-05
-      /
-    /
-    # LITR3 decomp
-    REACTION
-      UPSTREAM_POOL       LITR3
-      DOWNSTREAM_POOL     SOIL3               7.10000000e-01
-      DOWNSTREAM_POOL     DOM1                2.90000000e-01
-      RATE_DECOMPOSITION  1.41000000e-02 1/d
-      MONOD
-        SPECIES_NAME        NH4+
-        HALF_SATURATION_CONSTANT 5.87500000e-05
-        THRESHOLD_CONCENTRATION 0.00000000e+00
-        POOL_NORMALIZED
-      /
-      MONOD
-        SPECIES_NAME        NO3-
-        HALF_SATURATION_CONSTANT 5.87500000e-05
-        THRESHOLD_CONCENTRATION 0.00000000e+00
-        POOL_NORMALIZED
-      /
-      MONOD
-        SPECIES_NAME        O2(aq)
-        HALF_SATURATION_CONSTANT 1.00000000e-04
-        THRESHOLD_CONCENTRATION 0.00000000e+00
-      /
-    /
-    # LITR3 decomp anox
-    REACTION
-      UPSTREAM_POOL       LITR3
-      DOWNSTREAM_POOL     SOIL3               7.10000000e-01
-      DOWNSTREAM_POOL     DOM1                2.90000000e-01
-      RATE_DECOMPOSITION  7.05000000e-04 1/d
-      MONOD
-        SPECIES_NAME        NH4+
-        HALF_SATURATION_CONSTANT 5.87500000e-05
-        THRESHOLD_CONCENTRATION 0.00000000e+00
-        POOL_NORMALIZED
-      /
-      MONOD
-        SPECIES_NAME        NO3-
-        HALF_SATURATION_CONSTANT 5.87500000e-05
-        THRESHOLD_CONCENTRATION 0.00000000e+00
-        POOL_NORMALIZED
-      /
-      INHIBITION
-        SPECIES_NAME        DOM1
-        TYPE MONOD
-        INHIBITION_CONSTANT 3.00000000e-01
-      /
-      INHIBITION
-        SPECIES_NAME        O2(aq)
-        TYPE MONOD
-        INHIBITION_CONSTANT 1.00000000e-05
-      /
-    /
-    # CWD fragmentation
-    REACTION
-      UPSTREAM_POOL       CWD
-      DOWNSTREAM_POOL     LITR2               7.60000000e-01
-      DOWNSTREAM_POOL     LITR3               2.40000000e-01
-      RATE_DECOMPOSITION  1.00000000e-04 1/d
-    /
-    # SOIL4 decomp
-    REACTION
-      UPSTREAM_POOL       SOIL4
-      DOWNSTREAM_POOL     DOM1                1.00000000e+00
-      RATE_DECOMPOSITION  1.00000000e-02 1/d
-      MONOD
-        SPECIES_NAME        O2(aq)
-        HALF_SATURATION_CONSTANT 1.00000000e-04
-        THRESHOLD_CONCENTRATION 0.00000000e+00
-      /
-    /
-    # SOIL4 decomp anox
-    REACTION
-      UPSTREAM_POOL       SOIL4
-      DOWNSTREAM_POOL     DOM1                1.00000000e+00
-      RATE_DECOMPOSITION  5.00000000e-04 1/d
-      INHIBITION
-        SPECIES_NAME        DOM1
-        TYPE MONOD
-        INHIBITION_CONSTANT 3.00000000e-01
-      /
-      INHIBITION
-        SPECIES_NAME        O2(aq)
-        TYPE MONOD
-        INHIBITION_CONSTANT 1.00000000e-05
-      /
-    /
-    # SOIL1 decomp
-    REACTION
-      UPSTREAM_POOL       SOIL1
-      DOWNSTREAM_POOL     SOIL2               7.20000000e-01
-      DOWNSTREAM_POOL     DOM1                2.80000000e-01
-      RATE_DECOMPOSITION  7.26000000e-02 1/d
-      MONOD
-        SPECIES_NAME        O2(aq)
-        HALF_SATURATION_CONSTANT 1.00000000e-04
-        THRESHOLD_CONCENTRATION 0.00000000e+00
-      /
-    /
-    # SOIL1 decomp anox
-    REACTION
-      UPSTREAM_POOL       SOIL1
-      DOWNSTREAM_POOL     SOIL2               7.20000000e-01
-      DOWNSTREAM_POOL     DOM1                2.80000000e-01
-      RATE_DECOMPOSITION  3.63000000e-03 1/d
-      INHIBITION
-        SPECIES_NAME        DOM1
-        TYPE MONOD
-        INHIBITION_CONSTANT 3.00000000e-01
-      /
-      INHIBITION
-        SPECIES_NAME        O2(aq)
-        TYPE MONOD
-        INHIBITION_CONSTANT 1.00000000e-05
+        INHIBITION_CONSTANT 2.00000000e-05
       /
     /
     # LITR1 decomp
@@ -662,7 +617,7 @@ SORPTION
       /
       MONOD
         SPECIES_NAME        O2(aq)
-        HALF_SATURATION_CONSTANT 1.00000000e-04
+        HALF_SATURATION_CONSTANT 2.00000000e-04
         THRESHOLD_CONCENTRATION 0.00000000e+00
       /
     /
@@ -671,7 +626,7 @@ SORPTION
       UPSTREAM_POOL       LITR1
       DOWNSTREAM_POOL     SOIL1               6.10000000e-01
       DOWNSTREAM_POOL     DOM1                3.90000000e-01
-      RATE_DECOMPOSITION  6.02000000e-02 1/d
+      RATE_DECOMPOSITION  1.20400000e-02 1/d
       MONOD
         SPECIES_NAME        NH4+
         HALF_SATURATION_CONSTANT 5.01666667e-03
@@ -687,41 +642,99 @@ SORPTION
       INHIBITION
         SPECIES_NAME        DOM1
         TYPE MONOD
-        INHIBITION_CONSTANT 3.00000000e-01
+        INHIBITION_CONSTANT 5.00000000e-01
       /
       INHIBITION
         SPECIES_NAME        O2(aq)
         TYPE MONOD
-        INHIBITION_CONSTANT 1.00000000e-05
+        INHIBITION_CONSTANT 2.00000000e-05
       /
     /
-    # SOIL3 decomp
+    # LITR3 decomp
     REACTION
-      UPSTREAM_POOL       SOIL3
-      DOWNSTREAM_POOL     SOIL4               4.50000000e-01
-      DOWNSTREAM_POOL     DOM1                5.50000000e-01
+      UPSTREAM_POOL       LITR3
+      DOWNSTREAM_POOL     SOIL3               7.10000000e-01
+      DOWNSTREAM_POOL     DOM1                2.90000000e-01
       RATE_DECOMPOSITION  1.41000000e-02 1/d
       MONOD
+        SPECIES_NAME        NH4+
+        HALF_SATURATION_CONSTANT 5.87500000e-05
+        THRESHOLD_CONCENTRATION 0.00000000e+00
+        POOL_NORMALIZED
+      /
+      MONOD
+        SPECIES_NAME        NO3-
+        HALF_SATURATION_CONSTANT 5.87500000e-05
+        THRESHOLD_CONCENTRATION 0.00000000e+00
+        POOL_NORMALIZED
+      /
+      MONOD
         SPECIES_NAME        O2(aq)
-        HALF_SATURATION_CONSTANT 1.00000000e-04
+        HALF_SATURATION_CONSTANT 2.00000000e-04
         THRESHOLD_CONCENTRATION 0.00000000e+00
       /
     /
-    # SOIL3 decomp anox
+    # LITR3 decomp anox
     REACTION
-      UPSTREAM_POOL       SOIL3
-      DOWNSTREAM_POOL     SOIL4               4.50000000e-01
-      DOWNSTREAM_POOL     DOM1                5.50000000e-01
-      RATE_DECOMPOSITION  7.05000000e-04 1/d
+      UPSTREAM_POOL       LITR3
+      DOWNSTREAM_POOL     SOIL3               7.10000000e-01
+      DOWNSTREAM_POOL     DOM1                2.90000000e-01
+      RATE_DECOMPOSITION  1.41000000e-04 1/d
+      MONOD
+        SPECIES_NAME        NH4+
+        HALF_SATURATION_CONSTANT 5.87500000e-05
+        THRESHOLD_CONCENTRATION 0.00000000e+00
+        POOL_NORMALIZED
+      /
+      MONOD
+        SPECIES_NAME        NO3-
+        HALF_SATURATION_CONSTANT 5.87500000e-05
+        THRESHOLD_CONCENTRATION 0.00000000e+00
+        POOL_NORMALIZED
+      /
       INHIBITION
         SPECIES_NAME        DOM1
         TYPE MONOD
-        INHIBITION_CONSTANT 3.00000000e-01
+        INHIBITION_CONSTANT 5.00000000e-01
       /
       INHIBITION
         SPECIES_NAME        O2(aq)
         TYPE MONOD
-        INHIBITION_CONSTANT 1.00000000e-05
+        INHIBITION_CONSTANT 2.00000000e-05
+      /
+    /
+    # CWD fragmentation
+    REACTION
+      UPSTREAM_POOL       CWD
+      DOWNSTREAM_POOL     LITR2               7.60000000e-01
+      DOWNSTREAM_POOL     LITR3               2.40000000e-01
+      RATE_DECOMPOSITION  1.00000000e-04 1/d
+    /
+    # SOIL4 decomp
+    REACTION
+      UPSTREAM_POOL       SOIL4
+      DOWNSTREAM_POOL     DOM1                1.00000000e+00
+      RATE_DECOMPOSITION  1.00000000e-02 1/d
+      MONOD
+        SPECIES_NAME        O2(aq)
+        HALF_SATURATION_CONSTANT 2.00000000e-04
+        THRESHOLD_CONCENTRATION 0.00000000e+00
+      /
+    /
+    # SOIL4 decomp anox
+    REACTION
+      UPSTREAM_POOL       SOIL4
+      DOWNSTREAM_POOL     DOM1                1.00000000e+00
+      RATE_DECOMPOSITION  1.00000000e-04 1/d
+      INHIBITION
+        SPECIES_NAME        DOM1
+        TYPE MONOD
+        INHIBITION_CONSTANT 5.00000000e-01
+      /
+      INHIBITION
+        SPECIES_NAME        O2(aq)
+        TYPE MONOD
+        INHIBITION_CONSTANT 2.00000000e-05
       /
     /
       CO2_SPECIES_NAME CO2(aq)
@@ -731,8 +744,8 @@ SORPTION
   #### NOTE: End of auto-inserted reactions ####
   LOG_FORMULATION
   TRUNCATE_CONCENTRATION 1.00000000e-80
-  DATABASE /home/b0u/models/PFLOTRAN/REDOX-PFLOTRAN/hanford.dat
-  MAX_RESIDUAL_TOLERANCE 5.00000000e-14
+  DATABASE /autofs/nccsopen-svm1_home/b0u/ELM-alquimia/REDOX-PFLOTRAN/hanford.dat
+  MAX_RESIDUAL_TOLERANCE 2.00000000e-12
   MAX_RELATIVE_CHANGE_TOLERANCE 1.00000000e-10
 
 
@@ -789,7 +802,7 @@ CONSTRAINT initial
     Cl-                 1.56133834e-11
     Na+                 1.56133834e-11
     SO4--               1e-5 M Pyrite
-    HS-                 1e-8 G H2S(g)
+    H2S(aq)             1e-8 G H2S(g)
     Fe+++               .37e-5 M Goethite
     Fe++                30e-6
     CH4(aq)             1900e-9 G CH4(g)
@@ -802,6 +815,7 @@ CONSTRAINT initial
     Pyrite              0 1000.0 m^2/m^3
     Fe(OH)3             0  1000.0 m^2/m^3
     Goethite            0.01  1000.0 m^2/m^3
+    Rock(s)             0.25 1000.0 m^2/m^3
     #### NOTE: End of auto-inserted mineral constraints ####
   /
 

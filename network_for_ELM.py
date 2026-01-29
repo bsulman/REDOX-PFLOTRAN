@@ -134,7 +134,7 @@ def make_aqueous_network(
         adfactor_soil3=10.0,
         DOM_scale=4e-3,
         acetate_scale=4e-3,
-        O2_scale=1e-4,
+        O2_scale=2e-4,
         H2_scale=0.1,
         CO2_scale=0.1,
         CH4_scale=1e-3,
@@ -151,6 +151,21 @@ def make_aqueous_network(
         init_FeOxide=0.0,FeS_rate=0.0,init_FeSulfide=0.0,FeOxide_rate=1e-10,
         DOM_Fe_content=0.5e-3, # May be high, Breteler et al. (1981) found more like 6e-5 in spartina leaf litter which is an order of magnitude lower.
         DOM_sulfur_content = 0.01,
+        rateconstants={
+                'Fe(III) reduction':2.25e-8,
+                'Fe(II) microbial oxidation':100e-8,
+                'DOM respiration':2e-6,
+                'Fermentation':5e-7,
+                'Acetate aerobic respiration':3e-7,
+                'Hydrogen oxidation':1e-8*20,
+                'Sulfate reduction':5e-8,
+                'Sulfide oxidation':1e-8,
+                'Acetaclastic methanogenesis':2.5e-9,
+                'Methane oxidation':1e-7,
+                'Hydrogenotrophic methanogenesis':2e-8*3*0.32,
+                'Methane oxidation (SO4)':1e-9,
+                'Methane oxidation (Fe)':3e-10,
+        }
                                 ):
         # CTC decomposition network
 
@@ -253,7 +268,7 @@ def make_aqueous_network(
                         decomp_network.decomp_pool(name='Calcite',rate='1.d-6 mol/m^2-sec',constraints={'initial':'0.d-6  80.0'},kind='mineral'),
                 ])
 
-        DOM_inhib=DOM_scale*3
+        DOM_inhib=DOM_scale*5
         if not Fe:
                 DOM_Fe_content=0.0
         if not sulfate:
@@ -391,11 +406,11 @@ def make_aqueous_network(
                                                 # stoich='2.0 DOM1 + 8.0 Fe+++ + 4.0 H2O -> 2.0 CO2(aq) + 8.0 Fe++ + 9.0 H + NH4+',
                                                 monod_terms=[decomp_network.monod(species='Acetate-',k=acetate_scale,threshold=thresh),decomp_network.monod(species='Fe+++',k=Fe_scale)],
                                                 inhibition_terms=[decomp_network.inhibition(species='O2(aq)',k=O2_scale,type='MONOD')],
-                                                rate_constant=2.25e-8,reactiontype='MICROBIAL',activation_energy=Eact,),
+                                                rate_constant=rateconstants['Fe(III) reduction'],reactiontype='MICROBIAL',activation_energy=Eact,),
                         decomp_network.reaction(name='Fe(II) microbial oxidation',stoich='1.0 Fe++ + 0.25 O2(aq) + 1.0 H+ -> 1.0 Fe+++ + 0.5 H2O',
                                                 monod_terms=[decomp_network.monod(species='O2(aq)',k=O2_scale,threshold=0.0),decomp_network.monod(species='Fe++',k=0.1),
                                                                 decomp_network.monod(species='H+',k=1e-5)],
-                                                rate_constant=100e-8,reactiontype='MICROBIAL',activation_energy=Eact,),
+                                                rate_constant=rateconstants['Fe(II) microbial oxidation'],reactiontype='MICROBIAL',activation_energy=Eact,),
                         
                 ])
         
@@ -406,7 +421,7 @@ def make_aqueous_network(
         reactions.extend([
                 decomp_network.reaction(name='DOM1 respiration',reactant_pools={'DOM1':1.0,'O2(aq)':1.0},
                 product_pools={'CO2(aq)':1.0,'NH4+':1.0/DOM_CN*catomw/natomw,'Fe+++':DOM_Fe_content,'SO4--':DOM_sulfur_content},
-                rate_constant=2e-6,reactiontype='MICROBIAL',activation_energy=Eact,
+                rate_constant=rateconstants['DOM respiration'],reactiontype='MICROBIAL',activation_energy=Eact,
                 monod_terms=[decomp_network.monod(species='DOM1',k=DOM_scale),decomp_network.monod(species='O2(aq)',k=O2_scale,threshold=0.0)]),
         
                 # C6H12O6 + 2 H2O -> 2 CH3COO- + 2 CO2 + 2 H+ + 4 H2
@@ -414,7 +429,7 @@ def make_aqueous_network(
                 decomp_network.reaction(name='Fermentation',reactant_pools={'DOM1':1.0,'H2O':1/3},
                         product_pools={'Acetate-':1/3,'CO2(aq)':1/3,'H+':1/3,'H2(aq)':2/3,
                                 'NH4+':1.0/DOM_CN*catomw/natomw,'Fe+++':DOM_Fe_content,'SO4--':DOM_sulfur_content}, 
-                        rate_constant=5e-7,reactiontype='MICROBIAL', activation_energy=Eact,
+                        rate_constant=rateconstants['Fermentation'],reactiontype='MICROBIAL', activation_energy=Eact,
                         inhibition_terms=[decomp_network.inhibition(species='O2(aq)',k=O2_scale,type='MONOD'),
                                         decomp_network.inhibition(species='Acetate-',k=acetate_scale*0.5,type='MONOD'),
                                         decomp_network.inhibition(species='H+',k=1e-4,type='MONOD'),
@@ -426,14 +441,14 @@ def make_aqueous_network(
                 decomp_network.reaction(name='Acetate aerobic respiration',stoich='1.0 Acetate-  + 2.0 O2(aq) + 1.0 H+ -> 2.0 CO2(aq) + 2.0 H2O',
                                                         monod_terms=[decomp_network.monod(species='O2(aq)',k=O2_scale,threshold=thresh),
                                                                      decomp_network.monod(species='Acetate-',k=acetate_scale,threshold=thresh)],
-                                                        rate_constant=3e-7,reactiontype='MICROBIAL',activation_energy=Eact),
+                                                        rate_constant=rateconstants['Acetate aerobic respiration'],reactiontype='MICROBIAL',activation_energy=Eact),
 
 
                 # H2 oxidation if oxygen available
                 decomp_network.reaction(name='Hydrogen oxidation',stoich='2.0 H2(aq) + 1.0 O2(aq) -> 2.0 H2O',
                                                         monod_terms=[decomp_network.monod(species='H2(aq)',k=H2_scale,threshold=thresh),
                                                                 decomp_network.monod(species='O2(aq)',k=O2_scale,threshold=thresh)],
-                                                        rate_constant=1e-8*20,reactiontype='MICROBIAL',activation_energy=Eact,),
+                                                        rate_constant=rateconstants['Hydrogen oxidation'],reactiontype='MICROBIAL',activation_energy=Eact,),
         ])
 
         # DOM-C + 2 H2O -> CO2 + 4 H+ + 4 e-
@@ -447,7 +462,7 @@ def make_aqueous_network(
                         # In first manuscript draft rate constant was 5e-9. Consider increasing to ~1e-8 because modeled sulfide is very low
                         decomp_network.reaction(name='Sulfate reduction',reactant_pools={'Acetate-':1.0,'SO4--':1.0,'H+':3},
                                 product_pools={'CO2(aq)':2.0,'H2S(aq)':1.0},
-                                rate_constant=5e-8,reactiontype='MICROBIAL',activation_energy=Eact_sulfatered,
+                                rate_constant=rateconstants['Sulfate reduction'],reactiontype='MICROBIAL',activation_energy=Eact_sulfatered,
                                 monod_terms=[decomp_network.monod(species='Acetate-',k=acetate_scale,threshold=1.1e-15),
                                                 decomp_network.monod(species='SO4--',k=sulfate_scale),
                                                 decomp_network.monod(species='H+',k=1e-6)],
@@ -455,7 +470,7 @@ def make_aqueous_network(
                         ),
                         # H2S + 2 O2 -> SO4-- + 2 H+
                         decomp_network.reaction(name='Sulfide oxidation',stoich='1.0 H2S(aq) + 2.0 O2(aq) -> 1.0 SO4-- + 2.0 H+',
-                                rate_constant=1e-8,reactiontype='MICROBIAL',activation_energy=Eact,
+                                rate_constant=rateconstants['Sulfide oxidation'],reactiontype='MICROBIAL',activation_energy=Eact,
                                 monod_terms=[decomp_network.monod(species='O2(aq)',k=O2_scale,threshold=0.0),
                                                 decomp_network.monod(species='H2S(aq)',k=sulfate_scale/10)],
                         )
@@ -473,13 +488,13 @@ def make_aqueous_network(
                                                         # decomp_network.inhibition(species='H+',k=10**-5.54,type='MONOD'),
                                                         decomp_network.inhibition(species='H+',k=10**-5.54,type='INVERSE_MONOD')
                                                         ],
-                                        rate_constant=2.5e-9,reactiontype='MICROBIAL',activation_energy=Eact_methane,),
+                                        rate_constant=rateconstants['Acetaclastic methanogenesis'],reactiontype='MICROBIAL',activation_energy=Eact_methane,),
 
                         # King et al 1990 found rates around 9-160 nmol/cm3/hr
                         decomp_network.reaction(name='Methane oxidation',stoich='1.0 CH4(aq) + 2.0 O2(aq) -> 1.0 CO2(aq) + 2.0 H2O',
-                                        monod_terms=[decomp_network.monod(species='CH4(aq)',k=CH4_scale,threshold=thresh),
-                                                     decomp_network.monod(species='O2(aq)',k=O2_scale,threshold=thresh) ],
-                                        rate_constant=4e-8,reactiontype='MICROBIAL',activation_energy=Eact,),
+                                        monod_terms=[decomp_network.monod(species='CH4(aq)',k=1e-5,threshold=thresh),
+                                                     decomp_network.monod(species='O2(aq)',k=O2_scale/10,threshold=thresh) ],
+                                        rate_constant=rateconstants['Methane oxidation'],reactiontype='MICROBIAL',activation_energy=Eact,),
 
 
                         # Hydrogenotrophic methanogenesis
@@ -492,7 +507,7 @@ def make_aqueous_network(
                                                                 # decomp_network.inhibition(species='NO3-',k=conc_scales['NO3-'],type='MONOD'),
                                                                 # decomp_network.inhibition(species='SO4--',k=conc_scales['SO4--'],type='MONOD')
                                                                 ],
-                                                                rate_constant=2e-8*3*0.32,reactiontype='MICROBIAL',activation_energy=Eact_methane,),
+                                                                rate_constant=rateconstants['Hydrogenotrophic methanogenesis'],reactiontype='MICROBIAL',activation_energy=Eact_methane,),
                         
                 ])
 
@@ -500,12 +515,12 @@ def make_aqueous_network(
                         # Iversen et al 1985 found rates around 20 nmol/cm3/day
                         reactions.extend([   decomp_network.reaction(name='Methane oxidation (SO4)',stoich='1.0 CH4(aq)  + 1.0 SO4-- + 2.0 H+ -> 1.0 CO2(aq)  + 1.0 H2S(aq) + 2.0 H2O ',
                                             monod_terms=[decomp_network.monod(species='SO4--',k=sulfate_scale,threshold=thresh),decomp_network.monod(species='CH4(aq)',k=CH4_scale,threshold=thresh)],
-                                        rate_constant=1e-9,reactiontype='MICROBIAL',activation_energy=Eact,),])
+                                        rate_constant=rateconstants['Methane oxidation (SO4)'],reactiontype='MICROBIAL',activation_energy=Eact,),])
 
                 if Fe:
                         reactions.extend([   decomp_network.reaction(name='Methane oxidation (Fe)',stoich='1.0 CH4(aq)  + 8.0 Fe+++ + 2.0 H2O -> 1.0 CO2(aq)  + 8.0 Fe++ + 8.0 H+ ',
                                             monod_terms=[decomp_network.monod(species='Fe+++',k=Fe_scale*8,threshold=thresh),decomp_network.monod(species='CH4(aq)',k=CH4_scale,threshold=thresh)],
-                                        rate_constant=3e-10,reactiontype='MICROBIAL',activation_energy=Eact,),])
+                                        rate_constant=rateconstants['Methane oxidation (Fe)'],reactiontype='MICROBIAL',activation_energy=Eact,),])
 
 
                 
@@ -530,15 +545,36 @@ def oxygen_demand(txt):
                         out = out + float(line.split()[-1])*0.0001/24*100
         return out
                 
-
+rateconstants={
+                'Fe(III) reduction':2.25e-8,
+                'Fe(II) microbial oxidation':100e-8,
+                'DOM respiration':2e-6,
+                'Fermentation':5e-7,
+                'Acetate aerobic respiration':3e-7,
+                'Hydrogen oxidation':1e-8*20,
+                'Sulfate reduction':5e-8,
+                'Sulfide oxidation':1e-8,
+                'Acetaclastic methanogenesis':2.5e-9,
+                'Methane oxidation':1e-7,
+                'Hydrogenotrophic methanogenesis':2e-8*3*0.32,
+                'Methane oxidation (SO4)':1e-9,
+                'Methane oxidation (Fe)':3e-10,
+        }
+rateconstants['Sulfate reduction']=2e-8
 decomp_network_ad=make_network()
 decomp_network_notad=make_network(adfactor_soil3=1.0,adfactor_soil4=1.0)
-decomp_network_O2_ad=make_aqueous_network(calcite=False,Fe=True,DOM_scale=0.1,methane=True,FeS_rate=1e-9,init_FeOxide=0.01,init_FeSulfide=0.0)
-decomp_network_O2_notad=make_aqueous_network(adfactor_soil3=1.0,adfactor_soil4=1.0,calcite=False,Fe=True,N_imm_lim=0.1,anox_ratemod=0.2,
-                                                DOM_scale=0.5e-2,acetate_scale=1e-3,methane=True,FeS_rate=1e-8,init_FeOxide=0.01,FeOxide_rate=1e-8,init_FeSulfide=0.0)
-decomp_network_O2_lowFe_notad=make_aqueous_network(adfactor_soil3=1.0,adfactor_soil4=1.0,calcite=False,Fe=True,N_imm_lim=0.1,anox_ratemod=0.2,
-                                                DOM_scale=0.5e-2,acetate_scale=1e-3,methane=True,FeS_rate=1e-10,init_FeOxide=0.01,FeOxide_rate=1e-12,init_FeSulfide=0.0)
-
+decomp_network_O2_ad=make_aqueous_network(calcite=False,Fe=True,DOM_scale=0.1,methane=True,FeS_rate=1e-9,init_FeOxide=0.01,init_FeSulfide=0.0,rateconstants=rateconstants)
+decomp_network_O2_notad=make_aqueous_network(adfactor_soil3=1.0,adfactor_soil4=1.0,calcite=False,Fe=True,N_imm_lim=0.1,anox_ratemod=0.8,Fe_scale=1e-14,rateconstants=rateconstants,
+                                                DOM_scale=0.5e-2,acetate_scale=1e-3,methane=True,FeS_rate=1e-18,init_FeOxide=0.01,FeOxide_rate=1e-6,init_FeSulfide=0.0)
+decomp_network_O2_lowFe_notad=make_aqueous_network(adfactor_soil3=1.0,adfactor_soil4=1.0,calcite=False,Fe=True,N_imm_lim=0.1,anox_ratemod=0.8,Fe_scale=1e-14,DOM_Fe_content=1e-5,
+                                                DOM_scale=0.5e-2,acetate_scale=1e-3,methane=True,FeS_rate=1e-18,init_FeOxide=0.01,FeOxide_rate=1e-10,init_FeSulfide=0.0,
+                                                rateconstants=rateconstants)
+# Turn off anaerobic methane oxidation
+rateconstants_noAMO=rateconstants.copy()
+rateconstants_noAMO.update({'Methane oxidation (SO4)':0.0,'Methane oxidation (Fe)':0.0})
+decomp_network_O2_noAMO_notad=make_aqueous_network(adfactor_soil3=1.0,adfactor_soil4=1.0,calcite=False,Fe=True,N_imm_lim=0.1,anox_ratemod=0.8,Fe_scale=1e-14,
+                                                DOM_scale=0.5e-2,acetate_scale=1e-3,methane=True,FeS_rate=1e-18,init_FeOxide=0.01,FeOxide_rate=1e-6,init_FeSulfide=0.0,
+                                                rateconstants=rateconstants_noAMO)
 
 decomp_network_arctic_ad=make_aqueous_network(calcite=False,Fe=True,methane=True,sulfate=True,DOM_scale=0.1,init_FeOxide=0.01)
 decomp_network_arctic=make_aqueous_network(calcite=False,Fe=True,methane=True,sulfate=True,adfactor_soil4=1.0,adfactor_soil3=1.0,init_FeOxide=0.01)
@@ -672,15 +708,20 @@ if __name__=='__main__':
         # Write out input deck
         decomp_network.PF_network_writer(decomp_network_O2_ad,precision=8).write_into_input_deck('SOMdecomp_template.txt','ELM_decks/CTC_alquimia_forELM_O2consuming_adspinup.in',
                 CO2name='CO2(aq)',log_formulation=True,SOMdecomp_Q10=1.5,moisturefunc='LOGTHETA',database='hanford.dat',
-                chem_args={'MAX_RESIDUAL_TOLERANCE':2.0e-13*1,'MAX_RELATIVE_CHANGE_TOLERANCE':1e-10},verbose=True,
+                chem_args={'MAX_RESIDUAL_TOLERANCE':2.0e-12*1,'MAX_RELATIVE_CHANGE_TOLERANCE':1e-10},verbose=True,
                 )
 
         decomp_network.PF_network_writer(decomp_network_O2_notad,precision=8).write_into_input_deck('SOMdecomp_template.txt','ELM_decks/CTC_alquimia_forELM_O2consuming.in',
                 CO2name='CO2(aq)',log_formulation=True,SOMdecomp_Q10=1.5,moisturefunc='LOGTHETA',database='hanford.dat',
-                chem_args={'MAX_RESIDUAL_TOLERANCE':5.0e-13*2,'MAX_RELATIVE_CHANGE_TOLERANCE':1e-10},verbose=True,
+                chem_args={'MAX_RESIDUAL_TOLERANCE':1.75e-12,'MAX_RELATIVE_CHANGE_TOLERANCE':1e-10},verbose=True,
                 )
         
         decomp_network.PF_network_writer(decomp_network_O2_lowFe_notad,precision=8).write_into_input_deck('SOMdecomp_template.txt','ELM_decks/CTC_alquimia_forELM_O2consuming_lowFe.in',
+                CO2name='CO2(aq)',log_formulation=True,SOMdecomp_Q10=1.5,moisturefunc='LOGTHETA',database='hanford.dat',
+                chem_args={'MAX_RESIDUAL_TOLERANCE':5.0e-13*2,'MAX_RELATIVE_CHANGE_TOLERANCE':1e-10},verbose=True,
+                )
+        
+        decomp_network.PF_network_writer(decomp_network_O2_noAMO_notad,precision=8).write_into_input_deck('SOMdecomp_template.txt','ELM_decks/CTC_alquimia_forELM_O2consuming_noAMO.in',
                 CO2name='CO2(aq)',log_formulation=True,SOMdecomp_Q10=1.5,moisturefunc='LOGTHETA',database='hanford.dat',
                 chem_args={'MAX_RESIDUAL_TOLERANCE':5.0e-13*2,'MAX_RELATIVE_CHANGE_TOLERANCE':1e-10},verbose=True,
                 )
