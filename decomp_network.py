@@ -499,14 +499,14 @@ class PF_network_writer(PF_writer):
 
         
         
-    def run_simulation(self,template_file,simulation_name,pflotran_exe,output_suffix='-obs-0.pft',print_output=False,length_days=None,obs_time_hrs=None,
+    def run_simulation(self,template_file,simulation_name,pflotran_exe,output_suffix='-obs-0.pft',print_output=False,length_days=None,obs_time_hrs=None,wd=None,
                         log_formulation=True,truncate_concentration=1e-80,database='./hanford.dat',CO2name='HCO3-',**kwargs):
-        inputdeck=simulation_name+'_generated.in'
+        inputdeck=simulation_name+'.in'
         print('Setting up input deck in %s'%inputdeck)
         self.write_into_input_deck(template_file,inputdeck,length_days=length_days,obs_time_hrs=obs_time_hrs,
                                     log_formulation=log_formulation,database=database,truncate_concentration=truncate_concentration,CO2name=CO2name,**kwargs)
         import subprocess
-        cmd='{pflotran_exe:s} -pflotranin {simname:s}_generated.in'.format(pflotran_exe=pflotran_exe,simname=simulation_name)
+        cmd='{pflotran_exe:s} -pflotranin {simname:s}.in'.format(pflotran_exe=pflotran_exe,simname=simulation_name)
         print('Running cmd: %s'%cmd)
         status,output = subprocess.getstatusoutput(cmd)
         print('Simulation finished with status %d'%status)
@@ -516,7 +516,7 @@ class PF_network_writer(PF_writer):
             print(output)
             raise RuntimeError('Pflotran simulation failed')
         import plot_pf_output
-        outputfile=simulation_name + '_generated' + output_suffix
+        outputfile=simulation_name + output_suffix
         # Set up for more flexibility in output formats
         print('Reading output from file %s'%outputfile)
         output_data,units=plot_pf_output.read_tecfile(outputfile)
