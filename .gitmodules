@@ -1,4 +1,4 @@
 [submodule "alquimia"]
-	path = alquimia
+	path = src/alquimia
 	url = https://github.com/bsulman/alquimia-dev
 	branch = pflotran_reaction_rates

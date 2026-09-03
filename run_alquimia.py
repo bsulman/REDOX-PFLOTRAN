@@ -1,5 +1,5 @@
-from decomp_network import get_stoich_from_name
-from _alquimia import ffi,lib
+from .decomp_network import get_stoich_from_name
+from ._alquimia import ffi,lib
 import numpy
 
 import sys
@@ -224,7 +224,7 @@ def convert_condition_to_alquimia(cond,name):
         if constraint['kind']=='immobile':
             if 'initCN' in constraint:
                 # For flexible CN pools, need to add separate C and N pool constraints
-                from decomp_network import decomp_pool
+                from .decomp_network import decomp_pool
                 immobile.append(decomp_pool(name=constraint['name']+'C',kind='immobile',constraints={name:constraint['constraints'][name]}))
                 immobile.append(decomp_pool(name=constraint['name']+'N',kind='immobile',constraints={name:constraint['constraints'][name]/constraint['initCN']}))
             else:
@@ -664,29 +664,31 @@ class cell:
         output_DF['actual_dt']=self.output['actual_dt']
         output_units={'time':'s','Porosity':'NA','ncuts':'NA','actual_dt':'s'}
         total=pandas.DataFrame(self.output['total_mobile'],columns=self.primary_names,index=self.output['time']).add_prefix('Total ')
-        for col in total.columns:
-            output_DF[col]=total[col]
+        # for col in total.columns:
+        #     output_DF[col]=total[col]
         output_units.update([('Total '+s,'M') for s in self.primary_names])
         free=pandas.DataFrame(self.output['free'],columns=self.primary_names,index=self.output['time']).add_prefix('Free ')
-        for col in free.columns:
-            output_DF[col]=free[col]
+        # for col in free.columns:
+        #     output_DF[col]=free[col]
         output_units.update([('Free '+s,'M') for s in self.primary_names])
         sorbed=pandas.DataFrame(self.output['immobile'],columns=self.primary_names,index=self.output['time']).add_prefix('Total Sorbed ')
-        for col in sorbed.columns:
-            output_DF[col]=sorbed[col]
+        # for col in sorbed.columns:
+        #     output_DF[col]=sorbed[col]
         output_units.update([('Total Sorbed '+s,'mol/m^3') for s in self.primary_names])
         mineral_VF=pandas.DataFrame(self.output['mineral_VF'],columns=self.mineral_names,index=self.output['time']).add_suffix(' VF')
-        for col in mineral_VF.columns:
-            output_DF[col]=mineral_VF[col]
+        # for col in mineral_VF.columns:
+        #     output_DF[col]=mineral_VF[col]
         output_units.update([(s+' VF','m^3 mnrl/m^3 bulk') for s in self.mineral_names])
         mineral_rate=pandas.DataFrame(self.output['mineral_rate'],columns=self.mineral_names,index=self.output['time']).add_suffix(' Rate')
-        for col in mineral_rate.columns:
-            output_DF[col]=mineral_rate[col]
+        # for col in mineral_rate.columns:
+        #     output_DF[col]=mineral_rate[col]
         output_units.update([(s+' Rate','mol/m^3/sec') for s in self.mineral_names])
         secondary=pandas.DataFrame(self.output['aq_complex'],columns=self.secondary_names,index=self.output['time'])
-        for col in secondary.columns:
-            output_DF[col]=secondary[col]
+        # for col in secondary.columns:
+        #     output_DF[col]=secondary[col]
         output_units.update([(s,'M') for s in self.secondary_names])
+
+        output_DF=pandas.concat([output_DF,total,free,sorbed,mineral_VF,mineral_rate,secondary],axis=1)
         
         output_DF['CEC H+']=pandas.DataFrame(self.output['CEC H+'],index=self.output['time'])
         output_units['CEC H+']='mol/m^3'

@@ -2,8 +2,8 @@ from cffi import FFI
 ffi_builder=FFI()
 import os
 
-alquimia_dir='alquimia/build/alquimia'
-alquimia_include='alquimia/build/include'
+alquimia_dir='src/alquimia/build/alquimia'
+alquimia_include='src/alquimia/build/include'
 pflotran_dir=os.environ['PFLOTRAN_DIR']
 # pflotran_dir='/Users/b0u/Documents/Models/PFLOTRAN/pflotran-interface/src/pflotran'
 # Should set it up to check that these paths actually work
@@ -37,7 +37,7 @@ ffi_builder.set_source('_alquimia',
     """,libraries=['alquimia','pflotranchem','petsc'],
         library_dirs=[alquimia_dir,pflotran_dir]+[os.path.join(pth,'lib') for pth in petsc_paths],
         include_dirs=[mpi_include,alquimia_include]+[os.path.join(pth,'include') for pth in petsc_paths],
-        extra_link_args=['-Wl,-rpath,alquimia/build/alquimia','-Wl,-rpath,'+petsc_lib],
+        extra_link_args=['-Wl,-rpath,src/alquimia/build/alquimia','-Wl,-rpath,REDOX_PFLOTRAN/src/alquimia/build/alquimia','-Wl,-rpath,'+petsc_lib],
         )
     
 ffi_builder.cdef("""
