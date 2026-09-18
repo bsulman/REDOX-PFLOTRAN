@@ -634,6 +634,8 @@ class cell:
             'time':numpy.arange(nsteps,dtype=float)*dt,
             'actual_dt':numpy.ma.masked_all(nsteps,dtype=float),'ncuts':numpy.ma.masked_all(nsteps,dtype=int),
             'porosity':numpy.ma.masked_all(nsteps,dtype=float),
+            'temperature':numpy.ma.masked_all(nsteps,dtype=float),
+            'saturation':numpy.ma.masked_all(nsteps,dtype=float),
             'CEC H+':numpy.ma.masked_all(nsteps,dtype=float)
         }
         
@@ -646,6 +648,8 @@ class cell:
         self.output['time'][step]=step*dt
         self.output['mineral_rate'][step,:]=numpy.array([self.mineral_reaction_rate[name] for name in self.mineral_names])
         self.output['porosity'][step]=self.porosity
+        self.output['temperature'][step]=self.temperature
+        self.output['saturation'][step]=self.saturation
         self.output['actual_dt'][step]=dt/2**num_cuts
         self.output['ncuts'][step]=num_cuts
         # Keep track of how much H+ is in the carboxylate buffer rather than the CEC site, so we can plot CEC-exchangeable H+ later. 
@@ -660,6 +664,8 @@ class cell:
         import pandas
         output_DF=pandas.DataFrame(index=self.output['time'])
         output_DF['Porosity']=self.output['porosity']
+        output_DF['Temperature']=self.output['temperature']
+        output_DF['Saturation']=self.output['saturation']
         output_DF['ncuts']=self.output['ncuts']
         output_DF['actual_dt']=self.output['actual_dt']
         output_units={'time':'s','Porosity':'NA','ncuts':'NA','actual_dt':'s'}
